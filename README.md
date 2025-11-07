@@ -1,5 +1,5 @@
 # MICRO.ASXR — Distributed Self-Improving Operating System
-<img src="https://github.com/cannaseedus-bot/MICRO-ASXR/blob/main/micro-bots.png" style="float:center;margin:auto;"></img>
+<img src="https://github.com/cannaseedus-bot/MICRO-ASXR/blob/main/micronauitai.png" style="float:center;margin:auto;"></img>
 _A cognitive OS capsule that runs in the browser, learns from experience, self-corrects, and syncs its mind across devices._
 
 ## Run Locally (no Python needed)
