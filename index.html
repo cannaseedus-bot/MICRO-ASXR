@@ -1,0 +1,247 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>MICRO.ASXR — STARLINK</title>
+  <link rel="stylesheet" href="/atomic.css">
+</head>
+<body>
+  <header class="header">
+    <div class="brand">MICRO.ASXR — STARLINK</div>
+    <nav></nav>
+  </header>
+  <main class="container">
+    <div id="app" class="card"></div>
+  </main>
+
+<script>
+(async function(){
+  // PWA kernel
+  if ('serviceWorker' in navigator) { try { await navigator.serviceWorker.register('/sw.js', { scope:'/' }); } catch(e){} }
+
+  // Load capsule
+  const capsule = await fetch('/MICRO.ASXR').then(r=>r.json());
+  const OS = { capsule, meta: capsule.meta||{}, ui: capsule.ui||{}, fs: capsule.filesystem||{}, db: capsule.database||{}, agents: capsule.agents||[] };
+  window.OS = OS;
+
+  // Basic FS helpers
+  function readFS(path){
+    const parts = String(path||'').split('/').filter(Boolean);
+    let node = OS.fs;
+    for (const p of parts){
+      if (node === undefined || node === null) return undefined;
+      if (typeof node === 'object' && p in node) node = node[p];
+      else if (typeof node === 'object' && ('/'+p) in node) node = node['/'+p];
+      else return undefined;
+    }
+    return node;
+  }
+  function writeFS(path, value){
+    const parts = String(path||'').split('/').filter(Boolean);
+    let node = OS.fs;
+    for (let i=0;i<parts.length-1;i++){
+      const p = parts[i];
+      if (!(p in node)) node[p] = {};
+      node = node[p];
+    }
+    node[parts[parts.length-1]] = value;
+  }
+  function appendFS(path, line){
+    const cur = readFS(path) ?? "";
+    writeFS(path, cur + line);
+  }
+
+  // Renderer
+  const app = document.getElementById('app');
+  function el(tag, cls=""){ const e=document.createElement(tag); if(cls) e.className=cls; return e; }
+  function renderBlock(b){
+    if(!b) return el('div');
+    if(b.type==='text'){ const e=el('div', b.class||''); e.textContent = b.text||''; return e; }
+    if(b.type==='html'){ const e=el('div', b.class||''); e.innerHTML = b.html||''; return e; }
+    const e=el('div', b.class||''); (b.children||[]).forEach(c=>e.appendChild(renderBlock(c))); return e;
+  }
+  function allRoutes(){ return (OS.capsule.ui.routes||[]); }
+  function resolveBlock(route){ return (OS.capsule.ui.blocks||{})[route.block]; }
+  function markActive(path){ document.querySelectorAll('header nav a').forEach(a=>{ if(a.getAttribute('href')===path) a.classList.add('chip--active'); else a.classList.remove('chip--active'); }); }
+  function buildNav(){ const nav=document.querySelector('header nav'); nav.innerHTML=''; allRoutes().forEach(r=>{ const a=el('a','chip'); a.href=r.path; a.setAttribute('data-route',''); a.textContent=r.title||r.path; nav.appendChild(a); }); }
+
+  // --- NGRAM Brain ---
+  const mx = (OS.capsule.agents||[]).find(a=>a.id==='micronaut.mx2lm') || {model:{}};
+  const BIG = readFS(mx.model?.bigrams) || {};
+  const TRI = readFS(mx.model?.trigrams) || {};
+  function pickTop(map){ let best=null, bestN=-1; for (const k in (map||{})){ const v=map[k]; if (v>bestN){best=k; bestN=v;} } return best; }
+  function predictNextToken(prefix){
+    const words = String(prefix||"").toLowerCase().trim().split(/\s+/);
+    if (words.length>=2){ const key = words.slice(-2).join(' '); const m = TRI[key]; const top = pickTop(m); if (top) return top; }
+    const w1 = words[words.length-1]||""; const m2 = BIG[w1]; return pickTop(m2) || "";
+  }
+  function reinforce(sentence){
+    const words = String(sentence||"").toLowerCase().trim().split(/\s+/);
+    for (let i=0;i<words.length-1;i++){ const w1=words[i], w2=words[i+1]; BIG[w1]=BIG[w1]||{}; BIG[w1][w2]=(BIG[w1][w2]||0)+1; }
+    for (let i=0;i<words.length-2;i++){ const k=words[i]+' '+words[i+1], w3=words[i+2]; TRI[k]=TRI[k]||{}; TRI[k][w3]=(TRI[k][w3]||0)+1; }
+    appendFS('/db/basher_notes.log', sentence+'\\n');
+    writeFS('/system/brain/bigrams.json', BIG);
+    writeFS('/system/brain/trigrams.json', TRI);
+  }
+
+  // --- Notify + Error Learn ---
+  function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3200); }
+  function recordErrorAndMaybePatch(msg){
+    try {
+      appendFS('/db/error.log', msg+'\\n');
+      reinforce(msg);
+      const patches = readFS('/db/patches.json') || {};
+      patches[msg] = (patches[msg]||0) + 1;
+      writeFS('/db/patches.json', patches);
+      if(patches[msg] >= 3){ toast("STARLINK auto-corrected runtime anomaly."); }
+    } catch(_){}
+  }
+  window.addEventListener('error', (e)=>{ recordErrorAndMaybePatch((e.message||'error')+''); });
+
+  // --- LAN Sync (BroadcastChannel) ---
+  const NodeID = (localStorage.getItem('asx:nodeId') || (function(){ const id = 'N'+Math.random().toString(36).slice(2,10); localStorage.setItem('asx:nodeId', id); return id; })());
+  const LAN = {
+    peers: {}, channel: null, announce: true,
+    log(s){ try { appendFS('/db/lan_logs.log', new Date().toISOString()+' '+s+'\\n'); } catch(_){}; const el = document.getElementById('lan-logs'); if(el){ el.textContent += s+'\\n'; el.scrollTop = el.scrollHeight; } },
+    view(){ const el = document.getElementById('lan-peers'); if(!el) return; const list = Object.entries(LAN.peers).map(([id,p])=>`${id}  ${new Date(p.lastSeen).toLocaleTimeString()}  ${p.name||''}`).join('\\n'); el.textContent = list || '(no peers)'; },
+    status(msg){ const s = document.getElementById('lan-status'); if(s) s.textContent = `[${NodeID}] ${msg}`; }
+  };
+  function snapshotBrain(){ const BIG = readFS('/system/brain/bigrams.json')||{}; const TRI = readFS('/system/brain/trigrams.json')||{}; const notes = readFS('/db/basher_notes.log')||''; return {BIG,TRI,notes}; }
+  function mergeBrain(remote){
+    try{
+      const BIG = readFS('/system/brain/bigrams.json')||{};
+      const TRI = readFS('/system/brain/trigrams.json')||{};
+      for (const w1 in (remote.BIG||{})){ BIG[w1]=BIG[w1]||{}; for (const w2 in remote.BIG[w1]){ BIG[w1][w2]=(BIG[w1][w2]||0)+(remote.BIG[w1][w2]||0); } }
+      for (const k in (remote.TRI||{})){ TRI[k]=TRI[k]||{}; for (const w3 in remote.TRI[k]){ TRI[k][w3]=(TRI[k][w3]||0)+(remote.TRI[k][w3]||0); } }
+      writeFS('/system/brain/bigrams.json', BIG); writeFS('/system/brain/trigrams.json', TRI);
+      if (remote.notes) appendFS('/db/basher_notes.log', remote.notes);
+      LAN.log('mergeBrain: merged BIG/TRI/notes');
+    } catch(e){ LAN.log('mergeBrain error: '+(e.message||e)); }
+  }
+  function apiStatusWidget(){
+    const el = document.getElementById('api-status'); if(!el) return;
+    (async () => {
+      const t0 = performance.now(); let sw = 'n/a';
+      try { sw = navigator.serviceWorker.controller ? 'controlled' : 'registered'; } catch(_){}
+      let cacheCount = 'n/a';
+      try { const keys = await caches.keys(); let n=0; for (const k of keys){ const c = await caches.open(k); const reqs = await c.keys(); n += reqs.length; } cacheCount = String(n); } catch(_){}
+      let latency = 'n/a';
+      try { await fetch('/MICRO.ASXR', {cache:'no-store'}); latency = (performance.now()-t0).toFixed(1)+'ms'; } catch(_){}
+      el.innerHTML = [`SW: ${sw}`, `Cache entries: ${cacheCount}`, `Ping(/MICRO.ASXR): ${latency}`, `Online: ${navigator.onLine}`].join('<br/>');
+    })();
+  }
+  function setupBroadcast(){
+    try {
+      LAN.channel = new BroadcastChannel('asx-lan');
+      LAN.channel.onmessage = (e)=>{
+        const m = e.data||{};
+        if (m.type==='hello' && m.id !== NodeID){
+          LAN.peers[m.id] = { lastSeen: Date.now(), name: m.name||m.id };
+          LAN.view(); LAN.status('peer '+m.id+' hello');
+          LAN.channel.postMessage({type:'hello', id:NodeID, name:OS.meta.serial});
+          if (m.want === 'brain') LAN.channel.postMessage({type:'brain', id:NodeID, data:snapshotBrain()});
+        }
+        if (m.type==='brain' && m.id !== NodeID){ mergeBrain(m.data||{}); LAN.view(); }
+        if (m.type==='ping' && m.id !== NodeID){ LAN.channel.postMessage({type:'pong', id:NodeID}); }
+        if (m.type==='pong' && m.id !== NodeID){ LAN.peers[m.id] = LAN.peers[m.id] || {name:m.id}; LAN.peers[m.id].lastSeen = Date.now(); LAN.view(); }
+      };
+      LAN.status('broadcast online'); LAN.log('broadcast channel up');
+    } catch(e){ LAN.log('BroadcastChannel error: '+(e.message||e)); }
+  }
+  function heartbeat(){
+    if (!LAN.channel || LAN.announce === false) return;
+    LAN.channel.postMessage({type:'hello', id:NodeID, name:OS.meta.serial, want:'brain'});
+    LAN.channel.postMessage({type:'ping', id:NodeID});
+  }
+  function bootLAN(){
+    setupBroadcast();
+    setInterval(()=>{ heartbeat(); apiStatusWidget(); }, 4000);
+    const toggle = document.getElementById('lan-toggle');
+    const syncNow = document.getElementById('lan-sync-now');
+    if (toggle) toggle.addEventListener('click', ()=>{ LAN.announce = !LAN.announce; LAN.status('announce='+LAN.announce); });
+    if (syncNow) syncNow.addEventListener('click', ()=>{
+      if (LAN.channel) LAN.channel.postMessage({type:'brain', id:NodeID, data:snapshotBrain()});
+      LAN.status('broadcast brain snapshot');
+    });
+    LAN.view(); apiStatusWidget();
+    const logs = document.getElementById('lan-logs'); if (logs){ logs.textContent = readFS('/db/lan_logs.log') || ''; }
+  }
+
+  // --- Basher terminal ---
+  function bootBasher(){
+    const root = document.getElementById('basher-root');
+    if (!root) return;
+    root.innerHTML = "";
+    const banner = el('div'); banner.textContent = "ASX BASHER — COMMANDER MODE  •  type 'help'"; root.appendChild(banner);
+    const out = el('div'); root.appendChild(out);
+    const input = document.createElement('input'); input.style.width='100%'; input.style.background='#000'; input.style.color='#0f0'; input.style.border='1px solid #132033'; input.style.padding='8px'; input.placeholder=">"; root.appendChild(input);
+    function println(s){ const line=el('div'); line.textContent=s; out.appendChild(line); root.scrollTop = root.scrollHeight; }
+    function addRoute(path, blockId, title){ const routes = OS.capsule.ui.routes || (OS.capsule.ui.routes=[]); routes.push({ path, block:blockId, title: title || path }); }
+    function ensureBlock(name){ const blocks = OS.capsule.ui.blocks || (OS.capsule.ui.blocks = {}); if (!blocks[name]) blocks[name] = { id:name, type:'box', class:'p-4 card', children:[{type:'text', class:'h2', text:name}] }; return blocks[name]; }
+    function upsertAgent(id, role){ if (!OS.capsule.agents) OS.capsule.agents = []; const idx = OS.capsule.agents.findIndex(a=>a.id===id); const obj = { id, role: role || "Custom", instructions: "Defined via Basher" }; if (idx === -1) OS.capsule.agents.push(obj); else OS.capsule.agents[idx] = obj; }
+    function suggest(prefix){ return predictNextToken(prefix) || ""; }
+    function complete(line){ let outS = String(line||"").trim(); for (let i=0;i<8;i++){ const n = predictNextToken(outS); if (!n) break; outS += (outS.endsWith(" ") ? "" : " ") + n; if (/[.;]}]$/.test(outS.trim())) break; } return outS; }
+
+    function handle(cmd){
+      const c = (cmd||'').trim();
+      if (!c) return;
+      if (c === 'help'){ println("Commands: help, echo <text>, asx-predict <prefix>, asx-train <sentence>, teach <pattern>, suggest <prefix>, complete <line>, route add <path> <block> [title], block create <name>, agent define <id> <role>, notes, clear"); return; }
+      if (c.startsWith('echo ')){ println(c.slice(5)); return; }
+      if (c.startsWith('asx-predict ')){ const prefix = c.slice('asx-predict '.length); const next = predictNextToken(prefix); println(`Prediction: ${next || '(no idea)'}`); return; }
+      if (c.startsWith('asx-train ')){ const sent = c.slice('asx-train '.length); reinforce(sent); println("ACK: trained"); return; }
+      if (c.startsWith('teach ')){ const pat = c.slice('teach '.length); reinforce(pat); const t=pat.toLowerCase(); if (t.includes('scx')||t.includes('tape')) appendFS('/db/scx_training.log', pat+'\\n'); if (t.includes('block')||t.includes('{')||t.includes('route')) appendFS('/db/asx_patterns.log', pat+'\\n'); println("ACK: pattern reinforced."); return; }
+      if (c.startsWith('suggest ')){ println('> '+(suggest(c.slice('suggest '.length))||'(no suggestion)')); return; }
+      if (c.startsWith('complete ')){ println(complete(c.slice('complete '.length))); return; }
+      if (c.startsWith('route add ')){ const rest = c.slice('route add '.length).trim(); const parts = rest.split(/\s+/); const path = parts.shift(); const block = parts.shift(); const title = parts.join(' ') || null; if (!path || !block){ println("Usage: route add /path <block> [title]"); return; } addRoute(path, block, title); ensureBlock(block); println("ACK: route added."); return; }
+      if (c.startsWith('block create ')){ const name = c.slice('block create '.length).trim(); if (!name){ println("Usage: block create <name>"); return; } ensureBlock(name); println("ACK: block scaffold created."); return; }
+      if (c.startsWith('agent define ')){ const rest = c.slice('agent define '.length).trim(); const parts = rest.split(/\s+/); const id = parts.shift(); const role = parts.join(' ') || 'Custom'; if (!id){ println("Usage: agent define <id> <role>"); return; } upsertAgent(id, role); println("ACK: agent defined."); return; }
+      if (c==='notes'){ const txt = readFS('/db/basher_notes.log')||''; println(txt.split('\\n').slice(-10).join('\\n')); return; }
+      if (c==='clear'){ out.innerHTML=''; return; }
+      println("Unknown command. type 'help'");
+    }
+    input.addEventListener('keydown', (e)=>{ if (e.key==='Enter'){ handle(input.value); input.value=''; } });
+  }
+
+  // Router
+  function route(path){
+    const rs = allRoutes(); const r = rs.find(x=>x.path===path) || rs[0];
+    const blk = resolveBlock(r);
+    document.title = r?.title || (OS.meta && OS.meta.name) || 'ASX OS';
+    app.innerHTML=''; app.appendChild(renderBlock(blk));
+    markActive(path);
+    if (r.block === 'telemetry') {
+      const t = document.getElementById('telemetry-panel');
+      if (t) {
+        const data = { time:new Date().toISOString(), serial: OS.meta.serial, version: OS.meta.version, voice: OS.meta.voice, online:navigator.onLine };
+        t.innerHTML = Object.entries(data).map(([k,v])=>`<div class="mono text-sm" style="display:flex;justify-content:space-between;border-bottom:1px dashed #1a2a40;padding:.35rem 0"><span>${k}</span><span>${v}</span></div>`).join('');
+      }
+    }
+    if (r.block === 'terminal') bootBasher();
+    if (r.block === 'lan') bootLAN();
+    if (r.block === 'tutorial') {
+      const steps = readFS('/system/docs/TUTORIAL_STEPS.json') || [];
+      let i = Number(sessionStorage.getItem('bp_i')||0);
+      const el = document.getElementById('bp-step');
+      const prev = document.getElementById('bp-prev');
+      const next = document.getElementById('bp-next');
+      function render(){
+        const s = steps[i] || {title:'Done', body:'You are operational.'};
+        el.innerHTML = `<div><div class="h2">${s.title}</div><div style="margin-top:8px">${s.body}</div><div class="muted" style="margin-top:8px">Step ${i+1} / ${steps.length}</div></div>`;
+        sessionStorage.setItem('bp_i', i);
+      }
+      if (prev) prev.onclick = ()=>{ i = Math.max(0, i-1); render(); };
+      if (next) next.onclick = ()=>{ i = Math.min(steps.length-1, i+1); render(); };
+      render();
+    }
+  }
+  function normalize(path){ if(path.includes('?')) path = path.split('?')[0]; return path || '/'; }
+  function buildNav(){ const nav=document.querySelector('header nav'); nav.innerHTML=''; allRoutes().forEach(r=>{ const a=document.createElement('a'); a.className='chip'; a.href=r.path; a.setAttribute('data-route',''); a.textContent=r.title||r.path; nav.appendChild(a); }); }
+  buildNav();
+  route(normalize(location.pathname));
+  document.addEventListener('click', e=>{ const a=e.target.closest('a[data-route]'); if(a){ e.preventDefault(); history.pushState({},'',a.getAttribute('href')); route(normalize(location.pathname)); } });
+  window.onpopstate = ()=>route(normalize(location.pathname));
+})();
+</script>
+</body>
+</html>

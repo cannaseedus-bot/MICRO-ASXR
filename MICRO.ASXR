@@ -1,0 +1,272 @@
+{
+  "asxr_version": 2,
+  "meta": {
+    "name": "MICRO.ASXR \u2014 STARLINK",
+    "voice": "ASTRONAUT",
+    "trainer_voice": "COMMANDER",
+    "serial": "MICRO-ASXR-92D83332-1762538716",
+    "version": "OS.2.4",
+    "build": 1762538716,
+    "manufacturer": "ASX-LABS",
+    "key_signature": "80d43d709001d3598d4f5607434c4453ec2a6b7e686a8a0e4935498e70f8eb5f",
+    "metadata": {
+      "source": "blueprint-repo",
+      "created": 1762538716
+    }
+  },
+  "kernel": {
+    "dom_controller": "VDOM.Render",
+    "event_bus": "SignalCore.Emitter",
+    "lifecycle": [
+      "boot",
+      "mount",
+      "hydrate",
+      "sleep"
+    ],
+    "atomic_block_engine": "BlockVM.v1",
+    "encryption": "Liquid-Cipher-\u0394",
+    "ram_map": "dynamic-pages"
+  },
+  "filesystem": {
+    "/system": {
+      "brain": {
+        "bigrams.json": {},
+        "trigrams.json": {}
+      },
+      "docs": {
+        "ASX_BASHER_DOCS.md": "Basher quickstart: help, echo, asx-predict <prefix>, asx-train <sentence>, teach <pattern>.",
+        "TUTORIAL_STEPS.json": [
+          {
+            "title": "Welcome to MICRO.ASXR",
+            "body": "This capsule is a self-improving OS that runs entirely in your browser."
+          },
+          {
+            "title": "Basher Terminal",
+            "body": "Open /terminal. Commands: teach, suggest, complete, route add, block create, agent define."
+          },
+          {
+            "title": "SCX + ASX Grammar",
+            "body": "Teach building blocks. Example: teach block ui : { type:'box', class:'p-4 card', children:[] }"
+          },
+          {
+            "title": "LAN Sync",
+            "body": "Open /lan on multiple devices. Click Sync Now. Brains merge (tokens + notes)."
+          },
+          {
+            "title": "ASX-SERVER (JSON)",
+            "body": "Run: npx json-server --watch server/db.json --port 8800 and set remote_api in /db/lan_settings.json"
+          },
+          {
+            "title": "You're Operational",
+            "body": "Define agents and routes to grow your system. The OS learns while you use it."
+          }
+        ]
+      }
+    },
+    "/db": {
+      "basher_notes.log": "",
+      "error.log": "",
+      "patches.json": {},
+      "lan_peers.json": {},
+      "lan_logs.log": "",
+      "lan_settings.json": {
+        "announce": true,
+        "sync_brain": true,
+        "sync_notes": true
+      },
+      "scx_training.log": "",
+      "asx_patterns.log": ""
+    },
+    "/apps": {
+      "basher": {
+        "index.html": "<!-- basher UI reference -->"
+      }
+    },
+    "/cache": {},
+    "/tmp": {}
+  },
+  "database": {
+    "engine": "KV-Journaled",
+    "tables": {
+      "settings": {
+        "theme": "starlink",
+        "accent": "#59CAFF"
+      },
+      "user": {},
+      "inventory": {},
+      "agents": {}
+    }
+  },
+  "agents": [
+    {
+      "id": "core.agent.hub",
+      "role": "Supervisor",
+      "instructions": "Route signals; manage lifecycle; expose /bus API."
+    },
+    {
+      "id": "micronaut.mx2lm",
+      "role": "Language Engine",
+      "voice": "ASTRONAUT",
+      "model": {
+        "bigrams": "@/system/brain/bigrams.json",
+        "trigrams": "@/system/brain/trigrams.json",
+        "memory_notes": "@/db/basher_notes.log"
+      },
+      "functions": {
+        "predict_next": "nGramPredictor",
+        "auto_train": "nGramReinforce"
+      }
+    },
+    {
+      "id": "basher.shell",
+      "role": "Terminal",
+      "instructions": "Command palette, forwards to mx2lm for predictions."
+    }
+  ],
+  "ui": {
+    "routes": [
+      {
+        "path": "/",
+        "title": "Home",
+        "block": "home"
+      },
+      {
+        "path": "/about",
+        "title": "About",
+        "block": "about"
+      },
+      {
+        "path": "/telemetry",
+        "title": "Telemetry",
+        "block": "telemetry"
+      },
+      {
+        "path": "/terminal",
+        "title": "Terminal",
+        "block": "terminal"
+      },
+      {
+        "path": "/lan",
+        "title": "LAN",
+        "block": "lan"
+      },
+      {
+        "path": "/tutorial",
+        "title": "Tutorial",
+        "block": "tutorial"
+      }
+    ],
+    "blocks": {
+      "home": {
+        "id": "home",
+        "type": "box",
+        "class": "stack gap-3 p-4 card",
+        "children": [
+          {
+            "type": "text",
+            "class": "h1",
+            "text": "MICRO.ASXR \u2014 STARLINK"
+          },
+          {
+            "type": "html",
+            "class": "muted",
+            "html": "Self-improving capsule OS with N-gram brain, Basher terminal, LAN sync, and Blueprint tutorial."
+          },
+          {
+            "type": "html",
+            "html": "<a data-route href='/about' class='chip'>About</a> <a data-route href='/telemetry' class='chip'>Telemetry</a> <a data-route href='/terminal' class='chip'>Terminal</a> <a data-route href='/lan' class='chip'>LAN</a> <a data-route href='/tutorial' class='chip'>Tutorial</a>"
+          }
+        ]
+      },
+      "about": {
+        "id": "about",
+        "type": "box",
+        "class": "stack gap-2 p-4 card",
+        "children": [
+          {
+            "type": "text",
+            "class": "h2",
+            "text": "About Page"
+          },
+          {
+            "type": "text",
+            "class": "muted",
+            "text": "This UI is generated entirely from JSON at runtime."
+          },
+          {
+            "type": "text",
+            "class": "accent",
+            "text": "BOOM! \ud83d\udca5"
+          },
+          {
+            "type": "html",
+            "html": "<a data-route href='/' class='chip'>Back</a>"
+          }
+        ]
+      },
+      "telemetry": {
+        "id": "telemetry",
+        "type": "box",
+        "class": "stack gap-2 p-4 card",
+        "children": [
+          {
+            "type": "text",
+            "class": "h2",
+            "text": "System Telemetry"
+          },
+          {
+            "type": "html",
+            "html": "<div id='telemetry-panel' class='mono text-sm'></div>"
+          }
+        ]
+      },
+      "terminal": {
+        "id": "terminal",
+        "type": "html",
+        "class": "p-0",
+        "html": "<div id='basher-root' style='height:70vh;overflow:auto;background:#000;color:#0f0;border-radius:12px;border:1px solid #132033'></div><div class='p-4 muted text-sm'>Docs in /system/docs/ASX_BASHER_DOCS.md</div>"
+      },
+      "lan": {
+        "id": "lan",
+        "type": "html",
+        "class": "p-0",
+        "html": "<div id='lan-console' class='card' style='padding:16px'><h2 class='h2'>LAN Console</h2><div class='mono text-sm' id='lan-status'></div><div style='margin-top:10px' id='lan-controls'><button id='lan-toggle' class='chip'>Toggle Announce</button> <button id='lan-sync-now' class='chip'>Sync Now</button></div><h3 class='h3' style='margin-top:16px'>Peers</h3><div id='lan-peers' class='mono text-sm'></div><h3 class='h3' style='margin-top:16px'>API Status</h3><div id='api-status' class='mono text-sm'></div><h3 class='h3' style='margin-top:16px'>LAN Logs</h3><pre id='lan-logs' style='max-height:220px;overflow:auto;background:#0B0F14;padding:12px;border-radius:12px;border:1px solid #132033'></pre></div>"
+      },
+      "tutorial": {
+        "id": "tutorial",
+        "type": "html",
+        "class": "p-0",
+        "html": "<div class='card' style='padding:16px'><div class='h2'>Blueprint Tutorial</div><div class='muted'>Calm HUD-style onboarding</div><div id='bp-step' class='mono text-sm' style='margin-top:12px'></div><div style='margin-top:12px'><button id='bp-prev' class='chip'>Prev</button><button id='bp-next' class='chip'>Next</button></div></div>"
+      }
+    },
+    "themes": {
+      "starlink": {
+        "bg": "#080C12",
+        "panel": "#0E1622",
+        "panelBorder": "#132033",
+        "text": "#E6F1FF",
+        "muted": "#9FB7D2",
+        "accent": "#59CAFF",
+        "good": "#54D38A",
+        "warn": "#FFCC66",
+        "bad": "#FF6B6B"
+      }
+    },
+    "atomic_tokens": {
+      "space": "1rem",
+      "radius": "16px",
+      "shadow": "0 2px 8px rgba(0,0,0,.35)"
+    }
+  },
+  "contracts": {
+    "serial": "MICRO-ASXR-92D83332-1762538716",
+    "key": "DEMO-KEY-NOT-SECURE",
+    "product_registry": [
+      {
+        "sku": "MICRO-ASXR-OS",
+        "owner": "demo",
+        "issued": 1762538716
+      }
+    ]
+  }
+}

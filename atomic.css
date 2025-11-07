@@ -1,0 +1,28 @@
+:root{
+  --bg:#080C12; --panel:#0E1622; --panelBorder:#132033;
+  --text:#E6F1FF; --muted:#9FB7D2; --accent:#59CAFF;
+  --good:#54D38A; --warn:#FFCC66; --bad:#FF6B6B;
+  --space:1rem; --radius:16px; --shadow:0 2px 8px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box} html,body{height:100%; margin:0}
+body{background:var(--bg); color:var(--text); font:16px/1.5 system-ui,Segoe UI,Roboto,Arial}
+a{color:var(--accent); text-decoration:none}
+.header{display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--panelBorder); position:sticky; top:0; background:rgba(8,12,18,.7); backdrop-filter:saturate(130%) blur(8px)}
+.brand{font-weight:800; letter-spacing:.7px}
+nav a{margin-right:.5rem}
+.container{max-width:1100px; margin:0 auto; padding:16px}
+.card{background:var(--panel); border:1px solid var(--panelBorder); border-radius:var(--radius); box-shadow:var(--shadow)}
+.stack{display:flex; flex-direction:column}
+.row{display:flex; gap:1rem; flex-wrap:wrap}
+.gap-2{gap:.5rem} .gap-3{gap:1rem}
+.p-4{padding:1.25rem} .p-0{padding:0}
+.h1{font-size:1.8rem; font-weight:800}
+.h2{font-size:1.3rem; font-weight:700}
+.h3{font-size:1.1rem; font-weight:700}
+.muted{color:var(--muted)}
+.accent{color:var(--accent); font-weight:700}
+.chip{display:inline-block; padding:.4rem .7rem; border-radius:999px; background:#0F1C2B; border:1px solid var(--panelBorder); cursor:pointer}
+.chip--active{outline:2px solid var(--accent)}
+.mono{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+.text-sm{font-size:.9rem}
+.toast{position:fixed; bottom:20px; right:20px; padding:10px 14px; background:#0E1622; border:1px solid var(--accent); border-radius:12px; color:var(--accent); font-size:14px; z-index:9999}
