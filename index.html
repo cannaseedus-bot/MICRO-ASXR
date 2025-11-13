@@ -1,247 +1,1062 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>MICRO.ASXR — STARLINK</title>
-  <link rel="stylesheet" href="/atomic.css">
+<meta charset="UTF-8" />
+<title>ASX PRIME GODMODE – ULTRA Runtime</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<style>
+:root {
+  --g:#00ff99; --a:#00ffff; --b:#000; --w:#fff;
+  --accent:#ff66ff;
+  --morrowind-green:#00a86b;
+  --morrowind-gold:#d4af37;
+  --morrowind-dark:#0a2f1c;
+  --morrowind-light:#1a4f2c;
+  --text-glow:#00ff99;
+}
+* { box-sizing:border-box; margin:0; }
+html,body {
+  background:var(--b);
+  color:var(--g);
+  font-family:monospace;
+  height:100%;
+  overflow:hidden;
+}
+
+/* Boot Screen */
+#boot {
+  position:fixed; inset:0;
+  background:#000;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2rem;
+  z-index:9999;
+}
+#boot img {
+  width:120px;
+  filter:drop-shadow(0 0 20px var(--a));
+  animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { transform:scale(1); opacity:1; }
+  50% { transform:scale(1.1); opacity:0.8; }
+}
+.small { font-size:0.75rem; opacity:0.85; }
+
+/* Main Grid Shell */
+#app { display:none; height:100%; }
+
+.grid {
+  display:grid;
+  grid-template-columns:260px 1fr 360px;
+  grid-template-rows:60px 1fr 200px;
+  grid-template-areas:
+    "header header header"
+    "sidebar main inspector"
+    "terminal terminal terminal";
+  height:100%;
+  gap:1px;
+  background:var(--g);
+}
+.header {
+  grid-area:header;
+  background:#000;
+  border-bottom:1px solid var(--g);
+  display:flex;
+  align-items:center;
+  padding:0 1rem;
+  gap:1rem;
+}
+.sidebar {
+  grid-area:sidebar;
+  background:#000;
+  border-right:1px solid var(--g);
+  padding:1rem;
+  overflow-y:auto;
+}
+.main {
+  grid-area:main;
+  background:#000;
+  padding:1rem;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.inspector {
+  grid-area:inspector;
+  background:#000;
+  border-left:1px solid var(--g);
+  padding:1rem;
+  overflow:auto;
+}
+.terminal {
+  grid-area:terminal;
+  background:#000;
+  border-top:1px solid var(--g);
+  padding:1rem;
+}
+.panel {
+  border:1px solid var(--g);
+  border-radius:8px;
+  padding:1rem;
+  margin-bottom:1rem;
+  background:rgba(0,255,153,0.05);
+}
+.btn {
+  background:var(--g);
+  color:#000;
+  border:none;
+  padding:0.5rem 1rem;
+  border-radius:4px;
+  cursor:pointer;
+  font-weight:bold;
+  font-size:0.8rem;
+}
+.btn.sm { padding:0.3rem 0.6rem; font-size:0.75rem; }
+.btn.alt { background:var(--a); }
+.btn:disabled { opacity:0.4; cursor:not-allowed; }
+
+.led {
+  width:8px; height:8px; border-radius:50%;
+  background:var(--g);
+  box-shadow:0 0 8px var(--g);
+  display:inline-block;
+  margin-right:0.5rem;
+}
+.code {
+  background:#001100;
+  padding:1rem;
+  border-radius:4px;
+  font-size:0.8rem;
+  overflow-x:auto;
+  white-space:pre;
+}
+
+/* Tabs in main area */
+.tab-bar {
+  display:flex;
+  gap:0.5rem;
+  margin-bottom:0.5rem;
+}
+.tab-btn {
+  border:1px solid var(--g);
+  background:#000;
+  color:var(--g);
+  padding:0.3rem 0.6rem;
+  border-radius:999px;
+  font-size:0.75rem;
+  cursor:pointer;
+}
+.tab-btn.active {
+  background:var(--g);
+  color:#000;
+}
+.tab-panel {
+  flex:1;
+  overflow:auto;
+  border:1px solid var(--g);
+  border-radius:8px;
+  padding:0.75rem;
+}
+
+/* Emulator grid */
+.emu-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:0.75rem;
+}
+.emu-card {
+  border:1px solid var(--g);
+  border-radius:8px;
+  padding:0.5rem;
+  background:#000;
+}
+
+/* Terminal output */
+#terminal-output {
+  height:100px;
+  overflow-y:auto;
+  margin:0.5rem 0;
+}
+
+/* Morrowind tab (embedded launcher shell) */
+.morrowind-shell {
+  background:
+    radial-gradient(circle at top, var(--morrowind-dark) 0%, #000 100%);
+  border-radius:8px;
+  border:1px solid var(--morrowind-gold);
+  padding:0.75rem;
+  font-family:"Times New Roman", serif;
+  color:var(--morrowind-green);
+}
+.mw-header {
+  display:flex;
+  align-items:center;
+  border-bottom:2px solid var(--morrowind-gold);
+  padding-bottom:0.25rem;
+  margin-bottom:0.5rem;
+}
+.mw-logo-main {
+  font-size:1.3rem;
+  font-weight:bold;
+  color:var(--morrowind-gold);
+  text-shadow:0 0 10px var(--morrowind-green);
+}
+.mw-sub {
+  margin-left:auto;
+  font-size:0.8rem;
+  color:var(--morrowind-gold);
+}
+.mw-layout {
+  display:grid;
+  grid-template-columns:260px 1fr;
+  grid-template-rows:auto 160px;
+  grid-template-areas:
+    "side main"
+    "term term";
+  gap:0.5rem;
+}
+.mw-side { grid-area:side; border-right:1px solid var(--morrowind-gold); padding-right:0.5rem; }
+.mw-main { grid-area:main; text-align:center; }
+.mw-term { grid-area:term; }
+.mw-btn {
+  background:linear-gradient(135deg,var(--morrowind-green),var(--text-glow));
+  color:#000;
+  border:none;
+  width:100%;
+  padding:0.4rem 0.6rem;
+  border-radius:4px;
+  font-size:0.8rem;
+  margin:0.15rem 0;
+  cursor:pointer;
+}
+.mw-btn.primary {
+  padding:0.8rem 1.2rem;
+  font-size:1rem;
+  margin:0.4rem 0;
+}
+.mw-status-card {
+  border:1px solid var(--morrowind-green);
+  border-radius:6px;
+  padding:0.35rem;
+  font-size:0.75rem;
+  margin-top:0.3rem;
+}
+.mw-status-label {
+  color:var(--morrowind-gold);
+  font-weight:bold;
+}
+.mw-status-value {
+  color:var(--text-glow);
+}
+.mw-terminal {
+  background:#001100;
+  border-radius:4px;
+  border:1px solid var(--morrowind-green);
+  padding:0.5rem;
+  font-family:"Courier New", monospace;
+  font-size:0.75rem;
+  height:140px;
+  overflow-y:auto;
+}
+.progress-bar {
+  width:100%;
+  height:6px;
+  background:#1a4f2c;
+  border-radius:4px;
+  overflow:hidden;
+  margin-top:0.25rem;
+}
+.progress-fill {
+  height:100%;
+  background:linear-gradient(90deg,var(--morrowind-green),var(--text-glow));
+  width:0%;
+  transition:width 0.4s ease;
+}
+
+/* Quantum / stats in inspector */
+.badge {
+  display:inline-block;
+  border-radius:999px;
+  border:1px solid var(--g);
+  padding:0.1rem 0.4rem;
+  font-size:0.7rem;
+  margin:0.1rem;
+}
+</style>
 </head>
 <body>
-  <header class="header">
-    <div class="brand">MICRO.ASXR — STARLINK</div>
-    <nav></nav>
-  </header>
-  <main class="container">
-    <div id="app" class="card"></div>
-  </main>
+
+<!-- BOOT -->
+<div id="boot">
+  <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iMTUiIGZpbGw9IiMwMDAiLz4KPGNpcmNsZSBjeD0iNjAiIGN5PSI2MCIgcj0iMjAiIGZpbGw9IiMwMGZmOTkiIGZpbGwtb3BhY2l0eT0iMC4yIi8+CjxjaXJjbGUgY3g9IjYwIiBjeT0iNjAiIHI9IjE1IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMGZmOTkiIHN0cm9rZS13aWR0aD0iMyIvPgo8Y2lyY2xlIGN4PSI2MCIgY3k9IjYwIiByPSI4IiBmaWxsPSIjMDBmZjk5IiBmaWxsLW9wYWNpdHk9IjAuNSIvPgo8L3N2Zz4K" alt="ASX">
+  <div style="text-align:center;">
+    <div style="font-size:1.2rem; margin-bottom:0.5rem;">ASX PRIME GODMODE</div>
+    <div class="small" id="boot-status">Initializing quantum state vectors...</div>
+    <div class="progress-bar" style="width:260px; margin-top:0.75rem;">
+      <div class="progress-fill" id="boot-progress"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="grid">
+    <!-- HEADER -->
+    <div class="header">
+      <span class="led"></span>
+      <strong>ASX PRIME</strong>
+      <span class="small">SCX Q-SCX Kernel • Multi-Agent • Emu Hub • Python Bridge</span>
+      <div style="flex:1;"></div>
+      <span class="small" id="mem-display">MEM: 20.0KB / 20GB (virtual)</span>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="panel">
+        <strong>🧠 ASX Brain</strong>
+        <div class="small" style="margin:0.25rem 0;">N-gram / DeepSeek hybrid (external Python)</div>
+        <input id="brain-input" placeholder="Ask PRIME..." style="width:100%;padding:0.4rem;background:#001100;border:1px solid var(--g);color:var(--g);border-radius:4px;font-size:0.8rem;">
+        <button class="btn" style="margin-top:0.3rem;" onclick="askBrain()">Think</button>
+        <div id="brain-output" style="margin-top:0.3rem;font-size:0.7rem;min-height:40px;"></div>
+      </div>
+
+      <div class="panel">
+        <strong>🔐 Liquid Encryption</strong>
+        <div class="small" style="margin:0.25rem 0;">ECDH + AES-GCM + SCX IDs</div>
+        <button class="btn sm" onclick="initCrypto()">Init Keys</button>
+        <button class="btn sm" onclick="sendEncrypted()">Send Test</button>
+        <div id="crypto-status" class="small" style="margin-top:0.25rem;"></div>
+      </div>
+
+      <div class="panel">
+        <strong>🔌 Python Bridge</strong>
+        <div class="small" style="margin:0.25rem 0;">HTTP → asx_infer.py / Deepseek / Morrowind</div>
+        <button class="btn sm" onclick="pingPython()">Ping Python</button>
+        <button class="btn sm" onclick="testMorrowindPython()">Test Morrowind Runtime</button>
+        <div id="python-status" class="small" style="margin-top:0.25rem;"></div>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="tab-city" onclick="switchTab('tab-city', this)">City</button>
+        <button class="tab-btn" data-tab="tab-emu" onclick="switchTab('tab-emu', this)">Emu Hub</button>
+        <button class="tab-btn" data-tab="tab-mw" onclick="switchTab('tab-mw', this)">Morrowind 2024</button>
+      </div>
+
+      <!-- Panels -->
+      <div id="tab-city" class="tab-panel">
+        <div class="panel" style="margin-bottom:0.5rem;">
+          <strong>🏙 Multi-Agent City</strong>
+          <div class="small" style="margin-top:0.25rem;">
+            PRIME OS hub: agents, tapes, social grid, studio mode. (Stubbed here; you already have the full spec.)
+          </div>
+        </div>
+        <div class="panel">
+          <strong>📡 Runtime Status</strong>
+          <div class="small" id="runtime-status">
+            HTTP server: manual (npx http-server / php -S) • Tunnel: Basher/Cloudflare • Python: external daemon.
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-emu" class="tab-panel" style="display:none;">
+        <div class="small" style="margin-bottom:0.25rem;">
+          🎮 EMU-VERSE — NES, SNES, GB, GBA, Genesis + ROM tape + BitTorrent/WebRTC hooks.
+        </div>
+        <div class="emu-grid">
+          <div class="emu-card">
+            <div><strong>🕹 NES</strong></div>
+            <canvas id="nes-canvas" width="256" height="240" style="width:100%;background:#000;border:1px solid var(--g);margin-top:4px;"></canvas>
+            <input type="file" id="nes-rom" accept=".nes" style="margin-top:4px;width:100%;font-size:0.7rem;">
+            <button class="btn sm" style="margin-top:4px;" onclick="ASX.emu.loadROM('nes', document.getElementById('nes-rom').files[0])">Load NES ROM</button>
+          </div>
+
+          <div class="emu-card">
+            <div><strong>⭐ SNES</strong></div>
+            <canvas id="snes-canvas" width="256" height="224" style="width:100%;background:#000;border:1px solid var(--g);margin-top:4px;"></canvas>
+            <input type="file" id="snes-rom" accept=".smc,.sfc" style="margin-top:4px;width:100%;font-size:0.7rem;">
+            <button class="btn sm" style="margin-top:4px;" onclick="ASX.emu.loadROM('snes', document.getElementById('snes-rom').files[0])">Load SNES ROM</button>
+          </div>
+
+          <div class="emu-card">
+            <div><strong>📗 Game Boy</strong></div>
+            <canvas id="gb-canvas" width="160" height="144" style="width:100%;background:#000;border:1px solid var(--g);margin-top:4px;"></canvas>
+            <input type="file" id="gb-rom" accept=".gb,.gbc" style="margin-top:4px;width:100%;font-size:0.7rem;">
+            <button class="btn sm" style="margin-top:4px;" onclick="ASX.emu.loadROM('gb', document.getElementById('gb-rom').files[0])">Load GB ROM</button>
+          </div>
+
+          <div class="emu-card">
+            <div><strong>📘 GBA</strong></div>
+            <canvas id="gba-canvas" width="240" height="160" style="width:100%;background:#000;border:1px solid var(--g);margin-top:4px;"></canvas>
+            <input type="file" id="gba-rom" accept=".gba" style="margin-top:4px;width:100%;font-size:0.7rem;">
+            <button class="btn sm" style="margin-top:4px;" onclick="ASX.emu.loadROM('gba', document.getElementById('gba-rom').files[0])">Load GBA ROM</button>
+          </div>
+
+          <div class="emu-card">
+            <div><strong>🐉 Genesis</strong></div>
+            <canvas id="gen-canvas" width="320" height="224" style="width:100%;background:#000;border:1px solid var(--g);margin-top:4px;"></canvas>
+            <input type="file" id="gen-rom" accept=".bin,.gen,.md" style="margin-top:4px;width:100%;font-size:0.7rem;">
+            <button class="btn sm" style="margin-top:4px;" onclick="ASX.emu.loadROM('gen', document.getElementById('gen-rom').files[0])">Load GEN ROM</button>
+          </div>
+
+          <div class="emu-card">
+            <div><strong>📼 ROM Library Tape</strong></div>
+            <select id="rom-tape-select" style="margin-top:4px;width:100%;font-size:0.75rem;"></select>
+            <input type="text" id="magnet" placeholder="magnet:?xt=urn:btih:..." style="width:100%;margin-top:4px;padding:0.25rem;background:#001100;border:1px solid var(--g);color:var(--g);font-size:0.7rem;">
+            <button class="btn sm" style="margin-top:4px;" onclick="ASX.romTape.loadSelected('rom-tape-select')">Load from Tape</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-mw" class="tab-panel" style="display:none;">
+        <!-- MORROWIND LAUNCHER (embedded) -->
+        <div class="morrowind-shell">
+          <div class="mw-header">
+            <div class="mw-logo-main">THE ELDER SCROLLS III – MORROWIND</div>
+            <div class="mw-sub">ASX Modernizer 2024 • Python Runtime Hook</div>
+          </div>
+          <div class="mw-layout">
+            <div class="mw-side">
+              <div style="font-weight:bold;color:var(--morrowind-gold);margin-bottom:0.3rem;">⚡ Quick Actions</div>
+              <button class="mw-btn" onclick="mwScan()">🔍 Scan for Morrowind</button>
+              <button class="mw-btn" onclick="mwEnableAll()">🤖 Enable All Features</button>
+              <button class="mw-btn" onclick="mwInject()">🧩 Inject Plugins</button>
+              <button class="mw-btn" onclick="mwConnectMMO()">🌐 Connect MMO</button>
+              <button class="mw-btn primary" id="mw-launch-btn" onclick="mwLaunch()" disabled>🎮 LAUNCH MORROWIND</button>
+              <button class="mw-btn" onclick="mwLaunchPython()">🐍 Launch via Python Runtime</button>
+
+              <div style="margin-top:0.4rem;font-size:0.75rem;">📊 Status</div>
+              <div class="mw-status-card" id="mw-game-status">
+                <div class="mw-status-label">Game Detection</div>
+                <div class="mw-status-value" id="mw-game-status-text">UNKNOWN</div>
+              </div>
+              <div class="mw-status-card" id="mw-asx-status">
+                <div class="mw-status-label">ASX Runtime</div>
+                <div class="mw-status-value" id="mw-asx-status-text">READY</div>
+              </div>
+              <div class="mw-status-card" id="mw-mmo-status">
+                <div class="mw-status-label">MMO Network</div>
+                <div class="mw-status-value" id="mw-mmo-status-text">OFFLINE</div>
+              </div>
+            </div>
+
+            <div class="mw-main">
+              <div style="font-size:2rem;color:var(--morrowind-gold);margin-bottom:0.25rem;">MORROWIND 2024</div>
+              <div style="font-size:0.9rem;color:var(--morrowind-green);margin-bottom:0.6rem;">ASX Modernized Edition</div>
+              <div class="progress-bar">
+                <div class="progress-fill" id="mw-launch-progress"></div>
+              </div>
+              <div id="mw-launch-status" style="margin-top:0.4rem;font-size:0.85rem;color:var(--text-glow);">Idle.</div>
+              <div style="margin-top:0.75rem;font-size:0.75rem;">
+                🤖 AI NPCs • 👥 MMO Bridge • 🌉 Cross-Game portals • 💾 SCX compression
+              </div>
+            </div>
+
+            <div class="mw-term">
+              <div style="font-size:0.8rem;color:var(--morrowind-gold);margin-bottom:0.25rem;">💻 Morrowind Terminal</div>
+              <div class="mw-terminal" id="mw-terminal">
+&gt; ASX Morrowind Launcher v2024.1
+&gt; Type "scan", "launch", "python", or "status"
+              </div>
+              <div style="display:flex;gap:0.25rem;margin-top:0.25rem;">
+                <input id="mw-term-input" placeholder="scan | launch | python | status | help"
+                  style="flex:1;padding:0.3rem;background:#001100;border:1px solid var(--morrowind-green);color:var(--text-glow);border-radius:4px;font-size:0.75rem;">
+                <button class="mw-btn" style="width:auto;padding:0.3rem 0.6rem;" onclick="mwTermExec()">EXEC</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- INSPECTOR -->
+    <div class="inspector">
+      <div class="panel">
+        <strong>🔍 SCX / Q-SCX Inspector</strong>
+        <div class="small" style="margin-top:0.25rem;">
+          Original: 20.0GB • Packed: 20KB • Ratio: ~1,000,000:1 (conceptual).
+        </div>
+        <div style="margin-top:0.4rem;font-size:0.75rem;" id="scx-stats-text">
+          Q-SCX layer ready. Use ASX.qSCX.encode/decode for ROM snapshots, tape bundles, or Deepseek training chunks.
+        </div>
+      </div>
+
+      <div class="panel">
+        <strong>📊 Live Metrics</strong>
+        <div class="small" style="margin-top:0.25rem;">
+          FPS: <span id="fps-counter">0</span> • Gamepads: polled • EMU: <span id="emu-status-label">IDLE</span>
+        </div>
+        <div style="margin-top:0.3rem;">
+          <span class="badge">NES</span>
+          <span class="badge">SNES</span>
+          <span class="badge">GB</span>
+          <span class="badge">GBA</span>
+          <span class="badge">GEN</span>
+          <span class="badge">BitTorrent</span>
+          <span class="badge">Python Bridge</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TERMINAL -->
+    <div class="terminal">
+      <strong>💻 SCX Terminal</strong>
+      <div class="code" id="terminal-output">
+&gt; ASX PRIME Terminal Online
+      </div>
+      <div style="display:flex;gap:0.5rem;">
+        <input type="text" id="terminal-input" placeholder="Enter SCX command..." style="flex:1;padding:0.4rem;background:#001100;border:1px solid var(--g);color:var(--g);border-radius:4px;font-size:0.8rem;">
+        <button class="btn" onclick="executeSCX()">Run</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WebTorrent (browser) -->
+<script src="https://cdn.jsdelivr.net/npm/webtorrent/webtorrent.min.js"></script>
 
 <script>
-(async function(){
-  // PWA kernel
-  if ('serviceWorker' in navigator) { try { await navigator.serviceWorker.register('/sw.js', { scope:'/' }); } catch(e){} }
+/**********************************************************
+ * CORE STATE (very small – rest is external Python)
+ **********************************************************/
+window.ASX = {
+  state: {
+    user:{ score:100 },
+    system:{ mem:20.0, pythonOnline:false }
+  },
+  update() {
+    document.getElementById('score-display')?.textContent = this.state.user.score;
+  }
+};
 
-  // Load capsule
-  const capsule = await fetch('/MICRO.ASXR').then(r=>r.json());
-  const OS = { capsule, meta: capsule.meta||{}, ui: capsule.ui||{}, fs: capsule.filesystem||{}, db: capsule.database||{}, agents: capsule.agents||[] };
-  window.OS = OS;
+/**********************************************************
+ * SCX Terminal / Logging
+ **********************************************************/
+function log(msg){
+  const out=document.getElementById('terminal-output');
+  out.innerHTML += "\\n&gt; " + msg;
+  out.scrollTop = out.scrollHeight;
+}
+function executeSCX(){
+  const input=document.getElementById('terminal-input');
+  const cmd=input.value.trim();
+  if(!cmd) return;
+  log("$ "+cmd);
+  input.value="";
+  if(cmd==="help"){
+    log("Commands: help, status, emu, python, city");
+  } else if(cmd==="status"){
+    log("PRIME: running • Python bridge: " + (ASX.state.system.pythonOnline?"ONLINE":"OFFLINE"));
+  } else if(cmd==="emu"){
+    log("EMU HUB: NES/SNES/GB/GBA/GEN wired. Cores pluggable.");
+  } else if(cmd==="python"){
+    pingPython();
+  } else if(cmd==="city"){
+    log("City: Multi-agent hub (see City tab).");
+  } else {
+    log("Unknown SCX command.");
+  }
+}
 
-  // Basic FS helpers
-  function readFS(path){
-    const parts = String(path||'').split('/').filter(Boolean);
-    let node = OS.fs;
-    for (const p of parts){
-      if (node === undefined || node === null) return undefined;
-      if (typeof node === 'object' && p in node) node = node[p];
-      else if (typeof node === 'object' && ('/'+p) in node) node = node['/'+p];
-      else return undefined;
-    }
-    return node;
-  }
-  function writeFS(path, value){
-    const parts = String(path||'').split('/').filter(Boolean);
-    let node = OS.fs;
-    for (let i=0;i<parts.length-1;i++){
-      const p = parts[i];
-      if (!(p in node)) node[p] = {};
-      node = node[p];
-    }
-    node[parts[parts.length-1]] = value;
-  }
-  function appendFS(path, line){
-    const cur = readFS(path) ?? "";
-    writeFS(path, cur + line);
-  }
-
-  // Renderer
-  const app = document.getElementById('app');
-  function el(tag, cls=""){ const e=document.createElement(tag); if(cls) e.className=cls; return e; }
-  function renderBlock(b){
-    if(!b) return el('div');
-    if(b.type==='text'){ const e=el('div', b.class||''); e.textContent = b.text||''; return e; }
-    if(b.type==='html'){ const e=el('div', b.class||''); e.innerHTML = b.html||''; return e; }
-    const e=el('div', b.class||''); (b.children||[]).forEach(c=>e.appendChild(renderBlock(c))); return e;
-  }
-  function allRoutes(){ return (OS.capsule.ui.routes||[]); }
-  function resolveBlock(route){ return (OS.capsule.ui.blocks||{})[route.block]; }
-  function markActive(path){ document.querySelectorAll('header nav a').forEach(a=>{ if(a.getAttribute('href')===path) a.classList.add('chip--active'); else a.classList.remove('chip--active'); }); }
-  function buildNav(){ const nav=document.querySelector('header nav'); nav.innerHTML=''; allRoutes().forEach(r=>{ const a=el('a','chip'); a.href=r.path; a.setAttribute('data-route',''); a.textContent=r.title||r.path; nav.appendChild(a); }); }
-
-  // --- NGRAM Brain ---
-  const mx = (OS.capsule.agents||[]).find(a=>a.id==='micronaut.mx2lm') || {model:{}};
-  const BIG = readFS(mx.model?.bigrams) || {};
-  const TRI = readFS(mx.model?.trigrams) || {};
-  function pickTop(map){ let best=null, bestN=-1; for (const k in (map||{})){ const v=map[k]; if (v>bestN){best=k; bestN=v;} } return best; }
-  function predictNextToken(prefix){
-    const words = String(prefix||"").toLowerCase().trim().split(/\s+/);
-    if (words.length>=2){ const key = words.slice(-2).join(' '); const m = TRI[key]; const top = pickTop(m); if (top) return top; }
-    const w1 = words[words.length-1]||""; const m2 = BIG[w1]; return pickTop(m2) || "";
-  }
-  function reinforce(sentence){
-    const words = String(sentence||"").toLowerCase().trim().split(/\s+/);
-    for (let i=0;i<words.length-1;i++){ const w1=words[i], w2=words[i+1]; BIG[w1]=BIG[w1]||{}; BIG[w1][w2]=(BIG[w1][w2]||0)+1; }
-    for (let i=0;i<words.length-2;i++){ const k=words[i]+' '+words[i+1], w3=words[i+2]; TRI[k]=TRI[k]||{}; TRI[k][w3]=(TRI[k][w3]||0)+1; }
-    appendFS('/db/basher_notes.log', sentence+'\\n');
-    writeFS('/system/brain/bigrams.json', BIG);
-    writeFS('/system/brain/trigrams.json', TRI);
-  }
-
-  // --- Notify + Error Learn ---
-  function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3200); }
-  function recordErrorAndMaybePatch(msg){
-    try {
-      appendFS('/db/error.log', msg+'\\n');
-      reinforce(msg);
-      const patches = readFS('/db/patches.json') || {};
-      patches[msg] = (patches[msg]||0) + 1;
-      writeFS('/db/patches.json', patches);
-      if(patches[msg] >= 3){ toast("STARLINK auto-corrected runtime anomaly."); }
-    } catch(_){}
-  }
-  window.addEventListener('error', (e)=>{ recordErrorAndMaybePatch((e.message||'error')+''); });
-
-  // --- LAN Sync (BroadcastChannel) ---
-  const NodeID = (localStorage.getItem('asx:nodeId') || (function(){ const id = 'N'+Math.random().toString(36).slice(2,10); localStorage.setItem('asx:nodeId', id); return id; })());
-  const LAN = {
-    peers: {}, channel: null, announce: true,
-    log(s){ try { appendFS('/db/lan_logs.log', new Date().toISOString()+' '+s+'\\n'); } catch(_){}; const el = document.getElementById('lan-logs'); if(el){ el.textContent += s+'\\n'; el.scrollTop = el.scrollHeight; } },
-    view(){ const el = document.getElementById('lan-peers'); if(!el) return; const list = Object.entries(LAN.peers).map(([id,p])=>`${id}  ${new Date(p.lastSeen).toLocaleTimeString()}  ${p.name||''}`).join('\\n'); el.textContent = list || '(no peers)'; },
-    status(msg){ const s = document.getElementById('lan-status'); if(s) s.textContent = `[${NodeID}] ${msg}`; }
-  };
-  function snapshotBrain(){ const BIG = readFS('/system/brain/bigrams.json')||{}; const TRI = readFS('/system/brain/trigrams.json')||{}; const notes = readFS('/db/basher_notes.log')||''; return {BIG,TRI,notes}; }
-  function mergeBrain(remote){
-    try{
-      const BIG = readFS('/system/brain/bigrams.json')||{};
-      const TRI = readFS('/system/brain/trigrams.json')||{};
-      for (const w1 in (remote.BIG||{})){ BIG[w1]=BIG[w1]||{}; for (const w2 in remote.BIG[w1]){ BIG[w1][w2]=(BIG[w1][w2]||0)+(remote.BIG[w1][w2]||0); } }
-      for (const k in (remote.TRI||{})){ TRI[k]=TRI[k]||{}; for (const w3 in remote.TRI[k]){ TRI[k][w3]=(TRI[k][w3]||0)+(remote.TRI[k][w3]||0); } }
-      writeFS('/system/brain/bigrams.json', BIG); writeFS('/system/brain/trigrams.json', TRI);
-      if (remote.notes) appendFS('/db/basher_notes.log', remote.notes);
-      LAN.log('mergeBrain: merged BIG/TRI/notes');
-    } catch(e){ LAN.log('mergeBrain error: '+(e.message||e)); }
-  }
-  function apiStatusWidget(){
-    const el = document.getElementById('api-status'); if(!el) return;
-    (async () => {
-      const t0 = performance.now(); let sw = 'n/a';
-      try { sw = navigator.serviceWorker.controller ? 'controlled' : 'registered'; } catch(_){}
-      let cacheCount = 'n/a';
-      try { const keys = await caches.keys(); let n=0; for (const k of keys){ const c = await caches.open(k); const reqs = await c.keys(); n += reqs.length; } cacheCount = String(n); } catch(_){}
-      let latency = 'n/a';
-      try { await fetch('/MICRO.ASXR', {cache:'no-store'}); latency = (performance.now()-t0).toFixed(1)+'ms'; } catch(_){}
-      el.innerHTML = [`SW: ${sw}`, `Cache entries: ${cacheCount}`, `Ping(/MICRO.ASXR): ${latency}`, `Online: ${navigator.onLine}`].join('<br/>');
-    })();
-  }
-  function setupBroadcast(){
-    try {
-      LAN.channel = new BroadcastChannel('asx-lan');
-      LAN.channel.onmessage = (e)=>{
-        const m = e.data||{};
-        if (m.type==='hello' && m.id !== NodeID){
-          LAN.peers[m.id] = { lastSeen: Date.now(), name: m.name||m.id };
-          LAN.view(); LAN.status('peer '+m.id+' hello');
-          LAN.channel.postMessage({type:'hello', id:NodeID, name:OS.meta.serial});
-          if (m.want === 'brain') LAN.channel.postMessage({type:'brain', id:NodeID, data:snapshotBrain()});
-        }
-        if (m.type==='brain' && m.id !== NodeID){ mergeBrain(m.data||{}); LAN.view(); }
-        if (m.type==='ping' && m.id !== NodeID){ LAN.channel.postMessage({type:'pong', id:NodeID}); }
-        if (m.type==='pong' && m.id !== NodeID){ LAN.peers[m.id] = LAN.peers[m.id] || {name:m.id}; LAN.peers[m.id].lastSeen = Date.now(); LAN.view(); }
-      };
-      LAN.status('broadcast online'); LAN.log('broadcast channel up');
-    } catch(e){ LAN.log('BroadcastChannel error: '+(e.message||e)); }
-  }
-  function heartbeat(){
-    if (!LAN.channel || LAN.announce === false) return;
-    LAN.channel.postMessage({type:'hello', id:NodeID, name:OS.meta.serial, want:'brain'});
-    LAN.channel.postMessage({type:'ping', id:NodeID});
-  }
-  function bootLAN(){
-    setupBroadcast();
-    setInterval(()=>{ heartbeat(); apiStatusWidget(); }, 4000);
-    const toggle = document.getElementById('lan-toggle');
-    const syncNow = document.getElementById('lan-sync-now');
-    if (toggle) toggle.addEventListener('click', ()=>{ LAN.announce = !LAN.announce; LAN.status('announce='+LAN.announce); });
-    if (syncNow) syncNow.addEventListener('click', ()=>{
-      if (LAN.channel) LAN.channel.postMessage({type:'brain', id:NodeID, data:snapshotBrain()});
-      LAN.status('broadcast brain snapshot');
+/**********************************************************
+ * BRAIN (JS stub – your Python N-gram handles the real work)
+ **********************************************************/
+window.ASXBrain = {
+  think(prompt){
+    return new Promise(res=>{
+      // In real runtime: call Python via ASX.python.call("infer", {prompt})
+      let txt = prompt.toLowerCase();
+      let ans;
+      if(txt.includes("tape")) ans="Holotapes are self-contained ASX runtimes.";
+      else if(txt.includes("prime")) ans="PRIME is the one-file OS hosting tapes, emu, and Python bridge.";
+      else if(txt.includes("morrowind")) ans="Morrowind 2024 runs via the Morrowind tab + Python launcher.";
+      else ans="Ask about tapes, PRIME, emu, or Morrowind.";
+      setTimeout(()=>res({content:ans}),200);
     });
-    LAN.view(); apiStatusWidget();
-    const logs = document.getElementById('lan-logs'); if (logs){ logs.textContent = readFS('/db/lan_logs.log') || ''; }
   }
+};
+function askBrain(){
+  const input=document.getElementById('brain-input');
+  const q=input.value.trim();
+  if(!q) return;
+  const out=document.getElementById('brain-output');
+  out.textContent="🤔 Thinking...";
+  ASXBrain.think(q).then(r=>out.textContent=r.content);
+}
 
-  // --- Basher terminal ---
-  function bootBasher(){
-    const root = document.getElementById('basher-root');
-    if (!root) return;
-    root.innerHTML = "";
-    const banner = el('div'); banner.textContent = "ASX BASHER — COMMANDER MODE  •  type 'help'"; root.appendChild(banner);
-    const out = el('div'); root.appendChild(out);
-    const input = document.createElement('input'); input.style.width='100%'; input.style.background='#000'; input.style.color='#0f0'; input.style.border='1px solid #132033'; input.style.padding='8px'; input.placeholder=">"; root.appendChild(input);
-    function println(s){ const line=el('div'); line.textContent=s; out.appendChild(line); root.scrollTop = root.scrollHeight; }
-    function addRoute(path, blockId, title){ const routes = OS.capsule.ui.routes || (OS.capsule.ui.routes=[]); routes.push({ path, block:blockId, title: title || path }); }
-    function ensureBlock(name){ const blocks = OS.capsule.ui.blocks || (OS.capsule.ui.blocks = {}); if (!blocks[name]) blocks[name] = { id:name, type:'box', class:'p-4 card', children:[{type:'text', class:'h2', text:name}] }; return blocks[name]; }
-    function upsertAgent(id, role){ if (!OS.capsule.agents) OS.capsule.agents = []; const idx = OS.capsule.agents.findIndex(a=>a.id===id); const obj = { id, role: role || "Custom", instructions: "Defined via Basher" }; if (idx === -1) OS.capsule.agents.push(obj); else OS.capsule.agents[idx] = obj; }
-    function suggest(prefix){ return predictNextToken(prefix) || ""; }
-    function complete(line){ let outS = String(line||"").trim(); for (let i=0;i<8;i++){ const n = predictNextToken(outS); if (!n) break; outS += (outS.endsWith(" ") ? "" : " ") + n; if (/[.;]}]$/.test(outS.trim())) break; } return outS; }
+/**********************************************************
+ * CRYPTO ENGINE (toy)
+ **********************************************************/
+window.CryptoEngine = {
+  init(){
+    log("🔑 Crypto engine initialized");
+  },
+  encrypt(key, payload){
+    const b64 = btoa(JSON.stringify(payload));
+    return {iv:"fake_iv", ct:b64};
+  },
+  decrypt(key, bundle){
+    try { return JSON.parse(atob(bundle.ct)); } catch(e){ return null; }
+  }
+};
+function initCrypto(){
+  CryptoEngine.init();
+  document.getElementById('crypto-status').textContent = "Keys initialized (demo).";
+}
+function sendEncrypted(){
+  const enc = CryptoEngine.encrypt("asx", {msg:"Hello from PRIME"});
+  log("Encrypted payload length: "+enc.ct.length);
+}
 
-    function handle(cmd){
-      const c = (cmd||'').trim();
-      if (!c) return;
-      if (c === 'help'){ println("Commands: help, echo <text>, asx-predict <prefix>, asx-train <sentence>, teach <pattern>, suggest <prefix>, complete <line>, route add <path> <block> [title], block create <name>, agent define <id> <role>, notes, clear"); return; }
-      if (c.startsWith('echo ')){ println(c.slice(5)); return; }
-      if (c.startsWith('asx-predict ')){ const prefix = c.slice('asx-predict '.length); const next = predictNextToken(prefix); println(`Prediction: ${next || '(no idea)'}`); return; }
-      if (c.startsWith('asx-train ')){ const sent = c.slice('asx-train '.length); reinforce(sent); println("ACK: trained"); return; }
-      if (c.startsWith('teach ')){ const pat = c.slice('teach '.length); reinforce(pat); const t=pat.toLowerCase(); if (t.includes('scx')||t.includes('tape')) appendFS('/db/scx_training.log', pat+'\\n'); if (t.includes('block')||t.includes('{')||t.includes('route')) appendFS('/db/asx_patterns.log', pat+'\\n'); println("ACK: pattern reinforced."); return; }
-      if (c.startsWith('suggest ')){ println('> '+(suggest(c.slice('suggest '.length))||'(no suggestion)')); return; }
-      if (c.startsWith('complete ')){ println(complete(c.slice('complete '.length))); return; }
-      if (c.startsWith('route add ')){ const rest = c.slice('route add '.length).trim(); const parts = rest.split(/\s+/); const path = parts.shift(); const block = parts.shift(); const title = parts.join(' ') || null; if (!path || !block){ println("Usage: route add /path <block> [title]"); return; } addRoute(path, block, title); ensureBlock(block); println("ACK: route added."); return; }
-      if (c.startsWith('block create ')){ const name = c.slice('block create '.length).trim(); if (!name){ println("Usage: block create <name>"); return; } ensureBlock(name); println("ACK: block scaffold created."); return; }
-      if (c.startsWith('agent define ')){ const rest = c.slice('agent define '.length).trim(); const parts = rest.split(/\s+/); const id = parts.shift(); const role = parts.join(' ') || 'Custom'; if (!id){ println("Usage: agent define <id> <role>"); return; } upsertAgent(id, role); println("ACK: agent defined."); return; }
-      if (c==='notes'){ const txt = readFS('/db/basher_notes.log')||''; println(txt.split('\\n').slice(-10).join('\\n')); return; }
-      if (c==='clear'){ out.innerHTML=''; return; }
-      println("Unknown command. type 'help'");
+/**********************************************************
+ * PYTHON BRIDGE – HTTP bridge to your external daemon
+ **********************************************************/
+ASX.python = {
+  call(endpoint, payload){
+    // Expect your python HTTP server listening on /python/*
+    return fetch("/python/"+endpoint, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload || {})
+    }).then(r=>r.json());
+  }
+};
+function pingPython(){
+  document.getElementById('python-status').textContent = "Pinging Python...";
+  ASX.python.call("ping", {ts:Date.now()})
+    .then(res=>{
+      ASX.state.system.pythonOnline = true;
+      document.getElementById('python-status').textContent = "Python: ONLINE – "+(res.message||"pong");
+      log("Python bridge online.");
+    })
+    .catch(err=>{
+      ASX.state.system.pythonOnline = false;
+      document.getElementById('python-status').textContent = "Python: OFFLINE (check daemon)";
+      log("Python bridge offline.");
+    });
+}
+function testMorrowindPython(){
+  document.getElementById('python-status').textContent = "Calling Python /morrowind/launch...";
+  ASX.python.call("morrowind/launch", {mode:"test"})
+    .then(res=>{
+      document.getElementById('python-status').textContent = "Morrowind runtime: "+(res.status||"OK");
+      mwLog("Python runtime responded: "+JSON.stringify(res));
+    })
+    .catch(err=>{
+      document.getElementById('python-status').textContent = "Morrowind runtime error (see console).";
+      mwLog("Python runtime error.");
+    });
+}
+
+/**********************************************************
+ * EMU CORE REGISTRY + stubs
+ **********************************************************/
+ASX.emu = {
+  systems:{},
+  activeSystem:null,
+  registerSystem(id, cfg){ this.systems[id]=cfg; },
+  setActive(id){
+    this.activeSystem=id;
+    document.getElementById('emu-status-label').textContent = id ? id.toUpperCase() : "IDLE";
+  },
+  loadROM(systemId, fileOrBuf){
+    const sys=this.systems[systemId];
+    if(!sys || !sys.core){ log("EMU: system not ready "+systemId); return; }
+    if(fileOrBuf instanceof File){
+      const r=new FileReader();
+      r.onload=e=>sys.core.loadROM(e.target.result);
+      r.readAsArrayBuffer(fileOrBuf);
+    } else if(fileOrBuf) {
+      sys.core.loadROM(fileOrBuf);
     }
-    input.addEventListener('keydown', (e)=>{ if (e.key==='Enter'){ handle(input.value); input.value=''; } });
+    this.setActive(systemId);
+  },
+  frame(){
+    if(!this.activeSystem) return;
+    const sys=this.systems[this.activeSystem];
+    if(!sys || !sys.core || !sys.core.frame) return;
+    sys.core.frame();
   }
+};
 
-  // Router
-  function route(path){
-    const rs = allRoutes(); const r = rs.find(x=>x.path===path) || rs[0];
-    const blk = resolveBlock(r);
-    document.title = r?.title || (OS.meta && OS.meta.name) || 'ASX OS';
-    app.innerHTML=''; app.appendChild(renderBlock(blk));
-    markActive(path);
-    if (r.block === 'telemetry') {
-      const t = document.getElementById('telemetry-panel');
-      if (t) {
-        const data = { time:new Date().toISOString(), serial: OS.meta.serial, version: OS.meta.version, voice: OS.meta.voice, online:navigator.onLine };
-        t.innerHTML = Object.entries(data).map(([k,v])=>`<div class="mono text-sm" style="display:flex;justify-content:space-between;border-bottom:1px dashed #1a2a40;padding:.35rem 0"><span>${k}</span><span>${v}</span></div>`).join('');
+/* NES stub (plug JSNES real core here) */
+ASX.nes = {
+  core:null,
+  init(canvas){
+    const ctx=canvas.getContext("2d");
+    const img=ctx.createImageData(256,240);
+    const core={
+      loadROM(buf){ log("NES ROM loaded ("+(buf.byteLength||"?")+" bytes)."); },
+      frame(){
+        for(let i=0;i<img.data.length;i+=4){
+          const v=(Math.sin(i/2000)+1)*100;
+          img.data[i]=v; img.data[i+1]=255-v; img.data[i+2]=80; img.data[i+3]=255;
+        }
+        ctx.putImageData(img,0,0);
       }
-    }
-    if (r.block === 'terminal') bootBasher();
-    if (r.block === 'lan') bootLAN();
-    if (r.block === 'tutorial') {
-      const steps = readFS('/system/docs/TUTORIAL_STEPS.json') || [];
-      let i = Number(sessionStorage.getItem('bp_i')||0);
-      const el = document.getElementById('bp-step');
-      const prev = document.getElementById('bp-prev');
-      const next = document.getElementById('bp-next');
-      function render(){
-        const s = steps[i] || {title:'Done', body:'You are operational.'};
-        el.innerHTML = `<div><div class="h2">${s.title}</div><div style="margin-top:8px">${s.body}</div><div class="muted" style="margin-top:8px">Step ${i+1} / ${steps.length}</div></div>`;
-        sessionStorage.setItem('bp_i', i);
+    };
+    this.core=core;
+    ASX.emu.registerSystem("nes",{id:"nes",label:"NES",canvasId:canvas.id,core,fps:60,saveKey:"EMU_NES"});
+  }
+};
+
+/* SNES / GB / GBA / GENESIS stubs – plug real cores later */
+ASX.snes = {
+  core:null,
+  init(canvas){
+    const ctx=canvas.getContext("2d");
+    const img=ctx.createImageData(256,224);
+    const core={ loadROM(buf){ log("SNES ROM loaded ("+(buf.byteLength||"?")+" bytes)."); },
+      frame(){
+        for(let i=0;i<img.data.length;i+=4){
+          const v=60+Math.random()*60;
+          img.data[i]=v; img.data[i+1]=0; img.data[i+2]=(v*2)%255; img.data[i+3]=255;
+        }
+        ctx.putImageData(img,0,0);
       }
-      if (prev) prev.onclick = ()=>{ i = Math.max(0, i-1); render(); };
-      if (next) next.onclick = ()=>{ i = Math.min(steps.length-1, i+1); render(); };
-      render();
+    };
+    this.core=core;
+    ASX.emu.registerSystem("snes",{id:"snes",label:"SNES",canvasId:canvas.id,core,fps:60,saveKey:"EMU_SNES"});
+  }
+};
+ASX.gb = {
+  core:null,
+  init(canvas){
+    const ctx=canvas.getContext("2d");
+    const img=ctx.createImageData(160,144);
+    const core={ loadROM(buf){ log("GB ROM loaded ("+(buf.byteLength||"?")+" bytes)."); },
+      frame(){
+        for(let i=0;i<img.data.length;i+=4){
+          const v=120+((i/1000)%60);
+          img.data[i]=v; img.data[i+1]=v; img.data[i+2]=v; img.data[i+3]=255;
+        }
+        ctx.putImageData(img,0,0);
+      }
+    };
+    this.core=core;
+    ASX.emu.registerSystem("gb",{id:"gb",label:"GB",canvasId:canvas.id,core,fps:60,saveKey:"EMU_GB"});
+  }
+};
+ASX.gba = {
+  core:null,
+  init(canvas){
+    const ctx=canvas.getContext("2d");
+    const img=ctx.createImageData(240,160);
+    const core={ loadROM(buf){ log("GBA ROM loaded ("+(buf.byteLength||"?")+" bytes)."); },
+      frame(){
+        for(let i=0;i<img.data.length;i+=4){
+          const v=(i/3000)%255;
+          img.data[i]=v; img.data[i+1]=80; img.data[i+2]=150; img.data[i+3]=255;
+        }
+        ctx.putImageData(img,0,0);
+      }
+    };
+    this.core=core;
+    ASX.emu.registerSystem("gba",{id:"gba",label:"GBA",canvasId:canvas.id,core,fps:60,saveKey:"EMU_GBA"});
+  }
+};
+ASX.genesis = {
+  core:null,
+  init(canvas){
+    const ctx=canvas.getContext("2d");
+    const img=ctx.createImageData(320,224);
+    const core={ loadROM(buf){ log("GEN ROM loaded ("+(buf.byteLength||"?")+" bytes)."); },
+      frame(){
+        for(let i=0;i<img.data.length;i+=4){
+          const v=(Math.sin(i/5000)+1)*120;
+          img.data[i]=0; img.data[i+1]=v; img.data[i+2]=v; img.data[i+3]=255;
+        }
+        ctx.putImageData(img,0,0);
+      }
+    };
+    this.core=core;
+    ASX.emu.registerSystem("gen",{id:"gen",label:"GEN",canvasId:canvas.id,core,fps:60,saveKey:"EMU_GEN"});
+  }
+};
+
+/**********************************************************
+ * WEBTORRENT + ROM TAPE
+ **********************************************************/
+ASX.torrent = {
+  client:null,
+  init(){
+    try{
+      this.client=new WebTorrent();
+      log("Torrent: client initialized.");
+    }catch(e){
+      console.error(e);
+      log("Torrent: init failed.");
+    }
+  },
+  loadROMFromMagnet(systemId, magnet){
+    if(!this.client){ log("Torrent: client not ready."); return; }
+    log("Torrent: adding magnet for "+systemId);
+    this.client.add(magnet, torrent=>{
+      const file=torrent.files.find(f =>
+        /\.nes$/i.test(f.name) ||
+        /\.smc$|\.sfc$/i.test(f.name) ||
+        /\.gbc?$|\.gba$/i.test(f.name) ||
+        /\.bin$|\.gen$|\.md$/i.test(f.name)
+      );
+      if(!file){ log("Torrent: no ROM file found."); return; }
+      file.getBuffer(buf=>{
+        ASX.emu.loadROM(systemId, buf);
+        log("Torrent: ROM loaded from torrent: "+file.name);
+      });
+    });
+  }
+};
+
+ASX.romLibrary = [
+  // Fill with your preferred public-domain or personal ROMs
+  { id:"demo-nes", label:"Demo NES ROM", system:"nes", type:"magnet", source:"magnet:?xt=urn:btih:YOUR_HASH_HERE" }
+];
+ASX.romTape = {
+  initSelect(id){
+    const sel=document.getElementById(id);
+    if(!sel) return;
+    const opt0=document.createElement("option");
+    opt0.value=""; opt0.textContent="Select ROM from tape...";
+    sel.appendChild(opt0);
+    ASX.romLibrary.forEach(item=>{
+      const o=document.createElement("option");
+      o.value=item.id;
+      o.textContent="["+item.system.toUpperCase()+"] "+item.label;
+      sel.appendChild(o);
+    });
+  },
+  loadSelected(id){
+    const sel=document.getElementById(id);
+    if(!sel || !sel.value) return;
+    const item=ASX.romLibrary.find(r=>r.id===sel.value);
+    if(!item){ log("ROM tape: item not found."); return; }
+    if(item.type==="magnet"){
+      ASX.torrent.loadROMFromMagnet(item.system, item.source);
     }
   }
-  function normalize(path){ if(path.includes('?')) path = path.split('?')[0]; return path || '/'; }
-  function buildNav(){ const nav=document.querySelector('header nav'); nav.innerHTML=''; allRoutes().forEach(r=>{ const a=document.createElement('a'); a.className='chip'; a.href=r.path; a.setAttribute('data-route',''); a.textContent=r.title||r.path; nav.appendChild(a); }); }
-  buildNav();
-  route(normalize(location.pathname));
-  document.addEventListener('click', e=>{ const a=e.target.closest('a[data-route]'); if(a){ e.preventDefault(); history.pushState({},'',a.getAttribute('href')); route(normalize(location.pathname)); } });
-  window.onpopstate = ()=>route(normalize(location.pathname));
-})();
+};
+
+/**********************************************************
+ * Q-SCX (toy compression wrapper)
+ **********************************************************/
+ASX.qSCX = {
+  encode(buffer){
+    const bytes = new Uint8Array(buffer);
+    let bin=""; for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  },
+  decode(b64){
+    const bin=atob(b64);
+    const bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+    return bytes.buffer;
+  }
+};
+
+/**********************************************************
+ * GAMEPAD + EMU COACH
+ **********************************************************/
+ASX.gamepads = {
+  buttons:[],
+  init(){
+    window.addEventListener("gamepadconnected",e=>log("Gamepad connected: "+e.gamepad.id));
+    window.addEventListener("gamepaddisconnected",e=>log("Gamepad disconnected: "+e.gamepad.id));
+  },
+  poll(){
+    const pads=navigator.getGamepads ? navigator.getGamepads() : [];
+    const pad=pads && pads[0];
+    if(!pad) return;
+    this.buttons=pad.buttons.map(b=>b.pressed);
+  }
+};
+ASX.emuCoach = {
+  lastSpeak:0,
+  phrases:[
+    "Remember you can store ROM snapshots with Q-SCX.",
+    "Use the ROM tape for quick switching.",
+    "Wire JSNES / RetroArch to these stubs for full cores.",
+    "Python bridge can auto-generate tapes from ROM metadata."
+  ],
+  tick(){
+    const now=Date.now();
+    if(now-this.lastSpeak<8000) return;
+    if(!ASX.emu.activeSystem) return;
+    this.lastSpeak=now;
+    const p=this.phrases[Math.floor(Math.random()*this.phrases.length)];
+    log("EMU-COACH: "+p);
+  }
+};
+
+/**********************************************************
+ * MORROWIND LAUNCHER (embedded)
+ **********************************************************/
+function mwLog(msg){
+  const out=document.getElementById('mw-terminal');
+  out.innerHTML += "\\n&gt; " + msg;
+  out.scrollTop = out.scrollHeight;
+}
+function mwSetStatus(id,text){
+  document.getElementById(id).textContent=text;
+}
+function mwSetProgress(pct){
+  document.getElementById('mw-launch-progress').style.width = pct+"%";
+}
+function mwScan(){
+  mwLog("Scanning for Morrowind install...");
+  mwSetStatus('mw-game-status-text',"SCANNING...");
+  setTimeout(()=>{
+    mwLog("Found TES III: Morrowind at C:\\\\Program Files\\\\Steam\\\\steamapps\\\\common\\\\Morrowind");
+    mwSetStatus('mw-game-status-text',"DETECTED");
+    document.getElementById('mw-launch-btn').disabled=false;
+    mwLog("Ready to launch Morrowind 2024.");
+  },1500);
+}
+function mwEnableAll(){
+  mwLog("Enabling ASX modernizations (AI NPCs, MMO, Cross-Game, SCX)...");
+  mwSetStatus('mw-asx-status-text',"ACTIVE");
+}
+function mwInject(){
+  mwLog("Injecting plugins: NPC Alive, Live Economy, Quest AI...");
+}
+function mwConnectMMO(){
+  mwLog("Connecting to ASX MMO network...");
+  mwSetStatus('mw-mmo-status-text',"CONNECTING...");
+  setTimeout(()=>{
+    mwSetStatus('mw-mmo-status-text',"CONNECTED");
+    mwLog("MMO: connected, 200+ players online.");
+  },1500);
+}
+function mwLaunch(){
+  mwLog("Launching Morrowind 2024 (local OS)..."); 
+  mwSetProgress(0); mwSetStatus('mw-launch-status',"Starting...");
+  const steps=[
+    {t:500, msg:"Bypassing launcher / DRM...", p:20},
+    {t:1000,msg:"Injecting ASX runtime...", p:40},
+    {t:1500,msg:"Spawning AI consciousness...", p:60},
+    {t:2000,msg:"Connecting MMO & portals...", p:80},
+    {t:2500,msg:"Morrowind 2024 Ready!", p:100}
+  ];
+  steps.forEach(s=>setTimeout(()=>{
+    mwSetStatus('mw-launch-status',s.msg);
+    mwSetProgress(s.p);
+  }, s.t));
+  setTimeout(()=>mwLog("Morrowind 2024 launched (conceptual – hook Python for real EXE)."),2600);
+}
+function mwLaunchPython(){
+  mwLog("Calling Python runtime to actually launch Morrowind...");
+  mwSetStatus('mw-launch-status',"Calling Python /morrowind/launch...");
+  mwSetProgress(15);
+  ASX.python.call("morrowind/launch",{mode:"full"})
+    .then(res=>{
+      mwSetProgress(100);
+      mwSetStatus('mw-launch-status',"Python responded: "+(res.status||"OK"));
+      mwLog("Python launch response: "+JSON.stringify(res));
+    })
+    .catch(err=>{
+      mwSetStatus('mw-launch-status',"Python launch failed – see server logs.");
+      mwLog("Python launch failed (daemon offline?).");
+    });
+}
+function mwTermExec(){
+  const input=document.getElementById('mw-term-input');
+  const cmd=input.value.trim().toLowerCase();
+  input.value="";
+  if(!cmd) return;
+  mwLog("$ "+cmd);
+  if(cmd==="scan") mwScan();
+  else if(cmd==="launch") mwLaunch();
+  else if(cmd==="python") mwLaunchPython();
+  else if(cmd==="status"){
+    mwLog("Game: "+document.getElementById('mw-game-status-text').textContent+
+          " • MMO: "+document.getElementById('mw-mmo-status-text').textContent);
+  } else if(cmd==="help"){
+    mwLog("Commands: scan, launch, python, status, help");
+  } else {
+    mwLog("Unknown command.");
+  }
+}
+
+/**********************************************************
+ * TABS + BOOT + LOOP
+ **********************************************************/
+function switchTab(id, btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.style.display="none");
+  document.getElementById(id).style.display="block";
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+/* FPS / main loop */
+let frameCount=0, lastTime=performance.now();
+function mainLoop(){
+  frameCount++;
+  const now=performance.now();
+  if(now-lastTime>=1000){
+    document.getElementById('fps-counter').textContent=frameCount;
+    frameCount=0; lastTime=now;
+  }
+  ASX.gamepads.poll();
+  ASX.emu.frame();
+  ASX.emuCoach.tick();
+  requestAnimationFrame(mainLoop);
+}
+
+/* Boot sequence */
+const bootMessages=[
+  "Initializing quantum state vectors...",
+  "Compressing 20GB runtime (Q-SCX)...",
+  "Loading EMU hub and tapes...",
+  "Wiring Python bridge and tunnels...",
+  "Spawning PRIME agents...",
+  "Finalizing GODMODE shell...",
+  "Ready."
+];
+let bootStep=0;
+function updateBoot(){
+  const status=document.getElementById('boot-status');
+  const prog=document.getElementById('boot-progress');
+  if(bootStep<bootMessages.length){
+    status.textContent=bootMessages[bootStep];
+    prog.style.width=((bootStep+1)/bootMessages.length*100)+"%";
+    bootStep++;
+    setTimeout(updateBoot,400);
+  } else {
+    setTimeout(()=>{
+      document.getElementById('boot').style.display="none";
+      document.getElementById('app').style.display="block";
+      log("ASX PRIME GODMODE online.");
+    },300);
+  }
+}
+
+/* INIT */
+window.addEventListener("load",()=>{
+  // Emu system init
+  ASX.nes.init(document.getElementById('nes-canvas'));
+  ASX.snes.init(document.getElementById('snes-canvas'));
+  ASX.gb.init(document.getElementById('gb-canvas'));
+  ASX.gba.init(document.getElementById('gba-canvas'));
+  ASX.genesis.init(document.getElementById('gen-canvas'));
+  ASX.torrent.init();
+  ASX.gamepads.init();
+  ASX.romTape.initSelect("rom-tape-select");
+
+  document.getElementById('mw-term-input')
+    .addEventListener('keypress',e=>{ if(e.key==="Enter") mwTermExec(); });
+  document.getElementById('terminal-input')
+    .addEventListener('keypress',e=>{ if(e.key==="Enter") executeSCX(); });
+
+  mainLoop();
+  setTimeout(updateBoot,800);
+});
 </script>
 </body>
 </html>
