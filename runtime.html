@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MICRO-ASXR Runtime | MX2LM MICRONAUT AI</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #080C12;
+      --panel: #0E1622;
+      --panelBorder: #132033;
+      --text: #E6F1FF;
+      --muted: #9FB7D2;
+      --accent: #59CAFF;
+      --good: #54D38A;
+      --warn: #FFCC66;
+      --bad: #FF6B6B;
+      --radius: 16px;
+      --shadow: 0 2px 8px rgba(0,0,0,.35);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      padding: 40px 20px;
+      background: linear-gradient(135deg, var(--panel) 0%, #0A1018 100%);
+      border-radius: var(--radius);
+      margin-bottom: 30px;
+      box-shadow: var(--shadow);
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--good) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header .subtitle {
+      color: var(--muted);
+      font-size: 1.1rem;
+    }
+
+    .status-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .status-card {
+      background: var(--panel);
+      border: 1px solid var(--panelBorder);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .status-card .label {
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .status-card .value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--panelBorder);
+      padding-bottom: 10px;
+    }
+
+    .tab {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 8px 8px 0 0;
+      font-size: 1rem;
+      transition: all 0.3s;
+    }
+
+    .tab:hover {
+      background: var(--panelBorder);
+      color: var(--text);
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: var(--bg);
+      font-weight: 600;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panelBorder);
+      border-radius: var(--radius);
+      padding: 25px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      display: none;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+    }
+
+    .input-group label {
+      display: block;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+
+    .input-group input,
+    .input-group textarea,
+    .input-group select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--panelBorder);
+      color: var(--text);
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+
+    .input-group textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(89, 202, 255, 0.4);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--panelBorder);
+    }
+
+    .results {
+      background: var(--bg);
+      border: 1px solid var(--panelBorder);
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+    }
+
+    .prediction-item {
+      background: var(--panel);
+      border-left: 3px solid var(--accent);
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+    }
+
+    .prediction-item .word {
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .prediction-item .score {
+      color: var(--muted);
+      float: right;
+    }
+
+    .log-entry {
+      padding: 5px 0;
+      border-bottom: 1px solid var(--panelBorder);
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .success {
+      color: var(--good);
+    }
+
+    .error {
+      color: var(--bad);
+    }
+
+    .info {
+      color: var(--accent);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .header h1 {
+        font-size: 1.8rem;
+      }
+    }
+
+    .spinner {
+      border: 3px solid var(--panelBorder);
+      border-top: 3px solid var(--accent);
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-left: 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge.cpu {
+      background: var(--accent);
+      color: var(--bg);
+    }
+
+    .badge.gpu {
+      background: var(--good);
+      color: var(--bg);
+    }
+
+    .progress-bar {
+      background: var(--bg);
+      border-radius: 8px;
+      height: 8px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress-fill {
+      background: linear-gradient(90deg, var(--accent), var(--good));
+      height: 100%;
+      transition: width 0.3s;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚀 MICRO-ASXR Runtime</h1>
+      <p class="subtitle">MX2LM MICRONAUT AI | Single-Page Runtime with REST API</p>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-card">
+        <div class="label">Status</div>
+        <div class="value" id="status">●</div>
+      </div>
+      <div class="status-card">
+        <div class="label">Runtime</div>
+        <div class="value" id="runtime">CPU</div>
+      </div>
+      <div class="status-card">
+        <div class="label">Uptime</div>
+        <div class="value" id="uptime">0s</div>
+      </div>
+      <div class="status-card">
+        <div class="label">Requests</div>
+        <div class="value" id="requests">0</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('predict')">Predict</button>
+      <button class="tab" onclick="switchTab('train')">Train</button>
+      <button class="tab" onclick="switchTab('models')">Models</button>
+      <button class="tab" onclick="switchTab('config')">Config</button>
+      <button class="tab" onclick="switchTab('api')">API</button>
+    </div>
+
+    <!-- Predict Panel -->
+    <div class="panel active" id="panel-predict">
+      <h2>🔮 Prediction</h2>
+      <p style="color: var(--muted); margin-bottom: 20px;">Enter text to predict the next word using the n-gram model</p>
+
+      <div class="input-group">
+        <label>Input Text</label>
+        <input type="text" id="predict-input" placeholder="hello world" />
+      </div>
+
+      <div class="grid-2">
+        <button onclick="predict()">Predict Next Word</button>
+        <button class="btn-secondary" onclick="clearPredictions()">Clear</button>
+      </div>
+
+      <div class="results" id="predict-results" style="display: none;"></div>
+    </div>
+
+    <!-- Train Panel -->
+    <div class="panel" id="panel-train">
+      <h2>🎓 Training</h2>
+      <p style="color: var(--muted); margin-bottom: 20px;">Train the n-gram model with sentences</p>
+
+      <div class="input-group">
+        <label>Training Data (one sentence per line)</label>
+        <textarea id="train-input" placeholder="the quick brown fox jumps&#10;machine learning is amazing&#10;artificial intelligence is the future"></textarea>
+      </div>
+
+      <div class="grid-2">
+        <button onclick="trainModel()">Train Model</button>
+        <button class="btn-secondary" onclick="clearTraining()">Clear</button>
+      </div>
+
+      <div class="results" id="train-results" style="display: none;"></div>
+    </div>
+
+    <!-- Models Panel -->
+    <div class="panel" id="panel-models">
+      <h2>🤖 Models</h2>
+      <p style="color: var(--muted); margin-bottom: 20px;">Manage and view loaded models</p>
+
+      <div class="grid-2">
+        <button onclick="loadModels()">Refresh Models</button>
+        <button class="btn-secondary" onclick="viewBrain()">View Brain Data</button>
+      </div>
+
+      <div class="results" id="models-results" style="display: none;"></div>
+    </div>
+
+    <!-- Config Panel -->
+    <div class="panel" id="panel-config">
+      <h2>⚙️ Configuration</h2>
+      <p style="color: var(--muted); margin-bottom: 20px;">System configuration and runtime settings</p>
+
+      <div class="input-group">
+        <label>Runtime Mode</label>
+        <select id="runtime-select" onchange="setRuntime()">
+          <option value="cpu">CPU</option>
+          <option value="gpu">GPU</option>
+        </select>
+      </div>
+
+      <div class="grid-2">
+        <button onclick="loadConfig()">Load Config</button>
+        <button class="btn-secondary" onclick="viewSystemInfo()">System Info</button>
+      </div>
+
+      <div class="results" id="config-results" style="display: none;"></div>
+    </div>
+
+    <!-- API Panel -->
+    <div class="panel" id="panel-api">
+      <h2>📡 API Documentation</h2>
+      <div style="color: var(--muted); line-height: 1.8;">
+        <h3 style="color: var(--accent); margin-top: 20px;">Endpoints</h3>
+
+        <p><strong>GET /api/health</strong> - Health check</p>
+        <p><strong>GET /api/system</strong> - System information</p>
+        <p><strong>GET /api/config</strong> - Get ASX configuration</p>
+        <p><strong>POST /api/config</strong> - Update configuration</p>
+
+        <h3 style="color: var(--accent); margin-top: 20px;">Prediction</h3>
+        <p><strong>POST /api/predict</strong> - N-gram prediction</p>
+        <pre style="background: var(--bg); padding: 10px; border-radius: 4px; overflow-x: auto;">
+{
+  "text": "hello world",
+  "maxResults": 5
+}</pre>
+
+        <h3 style="color: var(--accent); margin-top: 20px;">Training</h3>
+        <p><strong>POST /api/train/ngram</strong> - Train n-gram model</p>
+        <pre style="background: var(--bg); padding: 10px; border-radius: 4px; overflow-x: auto;">
+{
+  "sentences": ["sentence one", "sentence two"]
+}</pre>
+
+        <p><strong>POST /api/train/start</strong> - Start training job</p>
+        <p><strong>GET /api/train/status/:jobId</strong> - Get training status</p>
+
+        <h3 style="color: var(--accent); margin-top: 20px;">Models</h3>
+        <p><strong>GET /api/models</strong> - List models</p>
+        <p><strong>POST /api/models/load</strong> - Load a model</p>
+        <p><strong>DELETE /api/models/:modelId</strong> - Unload model</p>
+
+        <h3 style="color: var(--accent); margin-top: 20px;">Runtime</h3>
+        <p><strong>GET /api/runtime</strong> - Get runtime info</p>
+        <p><strong>POST /api/runtime</strong> - Set runtime (cpu/gpu)</p>
+
+        <h3 style="color: var(--accent); margin-top: 20px;">WebSocket</h3>
+        <p><strong>ws://localhost:3000</strong> - Real-time updates</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let ws = null;
+
+    // Initialize
+    async function init() {
+      await updateStatus();
+      connectWebSocket();
+      setInterval(updateStatus, 5000);
+    }
+
+    // WebSocket connection
+    function connectWebSocket() {
+      const wsUrl = `ws://${window.location.host}`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        ws.send(JSON.stringify({ type: 'subscribe', channel: 'all' }));
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        handleWebSocketMessage(data);
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected, reconnecting...');
+        setTimeout(connectWebSocket, 3000);
+      };
+    }
+
+    function handleWebSocketMessage(data) {
+      if (data.type === 'status') {
+        updateStatusDisplay(data.data);
+      } else if (data.channel === 'training') {
+        updateTrainingProgress(data.data);
+      }
+    }
+
+    // Update status
+    async function updateStatus() {
+      try {
+        const res = await fetch(`${API_BASE}/api/health`);
+        const data = await res.json();
+        updateStatusDisplay(data);
+      } catch (error) {
+        console.error('Failed to fetch status:', error);
+      }
+    }
+
+    function updateStatusDisplay(data) {
+      document.getElementById('status').textContent = '● Online';
+      document.getElementById('status').style.color = 'var(--good)';
+      document.getElementById('runtime').textContent = (data.runtime || 'cpu').toUpperCase();
+      document.getElementById('uptime').textContent = formatUptime(data.uptime || 0);
+      document.getElementById('requests').textContent = data.stats?.requests || 0;
+    }
+
+    function formatUptime(ms) {
+      const seconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+
+      if (hours > 0) return `${hours}h`;
+      if (minutes > 0) return `${minutes}m`;
+      return `${seconds}s`;
+    }
+
+    // Tab switching
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+
+      event.target.classList.add('active');
+      document.getElementById(`panel-${tab}`).classList.add('active');
+    }
+
+    // Prediction
+    async function predict() {
+      const input = document.getElementById('predict-input').value;
+      if (!input) {
+        alert('Please enter text');
+        return;
+      }
+
+      const resultsDiv = document.getElementById('predict-results');
+      resultsDiv.style.display = 'block';
+      resultsDiv.innerHTML = '<div class="spinner"></div> Predicting...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/predict`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: input, maxResults: 5 })
+        });
+
+        const data = await res.json();
+
+        if (data.predictions && data.predictions.length > 0) {
+          resultsDiv.innerHTML = data.predictions.map(p =>
+            `<div class="prediction-item">
+              <span class="word">${p.word}</span>
+              <span class="score">Score: ${p.score}</span>
+            </div>`
+          ).join('');
+        } else {
+          resultsDiv.innerHTML = '<p class="info">No predictions available. Train the model first!</p>';
+        }
+      } catch (error) {
+        resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    }
+
+    function clearPredictions() {
+      document.getElementById('predict-input').value = '';
+      document.getElementById('predict-results').style.display = 'none';
+    }
+
+    // Training
+    async function trainModel() {
+      const input = document.getElementById('train-input').value;
+      if (!input) {
+        alert('Please enter training data');
+        return;
+      }
+
+      const sentences = input.split('\n').filter(s => s.trim());
+      const resultsDiv = document.getElementById('train-results');
+      resultsDiv.style.display = 'block';
+      resultsDiv.innerHTML = '<div class="spinner"></div> Training...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/train/ngram`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sentences })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          resultsDiv.innerHTML = `
+            <p class="success">✓ Training completed!</p>
+            <p>Sentences trained: ${data.sentencesTrained}</p>
+            <p>Bigram keys: ${data.bigramKeys}</p>
+            <p>Trigram keys: ${data.trigramKeys}</p>
+          `;
+        } else {
+          resultsDiv.innerHTML = `<p class="error">Training failed</p>`;
+        }
+      } catch (error) {
+        resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    }
+
+    function clearTraining() {
+      document.getElementById('train-input').value = '';
+      document.getElementById('train-results').style.display = 'none';
+    }
+
+    function updateTrainingProgress(data) {
+      const resultsDiv = document.getElementById('train-results');
+      if (data.progress !== undefined) {
+        resultsDiv.innerHTML = `
+          <p class="info">Training job: ${data.jobId}</p>
+          <p>Progress: ${data.progress.toFixed(1)}%</p>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${data.progress}%"></div>
+          </div>
+        `;
+      }
+    }
+
+    // Models
+    async function loadModels() {
+      const resultsDiv = document.getElementById('models-results');
+      resultsDiv.style.display = 'block';
+      resultsDiv.innerHTML = '<div class="spinner"></div> Loading...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/models`);
+        const data = await res.json();
+
+        if (data.models && data.models.length > 0) {
+          resultsDiv.innerHTML = data.models.map(m =>
+            `<div class="log-entry">
+              <strong>${m.id}</strong> (${m.type})
+              <br><small style="color: var(--muted)">Loaded: ${new Date(m.loaded).toLocaleString()}</small>
+            </div>`
+          ).join('');
+        } else {
+          resultsDiv.innerHTML = '<p class="info">No models loaded</p>';
+        }
+      } catch (error) {
+        resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    }
+
+    async function viewBrain() {
+      const resultsDiv = document.getElementById('models-results');
+      resultsDiv.style.display = 'block';
+      resultsDiv.innerHTML = '<div class="spinner"></div> Loading brain data...';
+
+      try {
+        const [bigrams, trigrams] = await Promise.all([
+          fetch(`${API_BASE}/api/brain/bigrams`).then(r => r.json()),
+          fetch(`${API_BASE}/api/brain/trigrams`).then(r => r.json())
+        ]);
+
+        resultsDiv.innerHTML = `
+          <h3 style="color: var(--accent)">Brain Statistics</h3>
+          <p>Bigrams: ${Object.keys(bigrams).length} keys</p>
+          <p>Trigrams: ${Object.keys(trigrams).length} keys</p>
+          <details style="margin-top: 15px;">
+            <summary style="cursor: pointer; color: var(--accent);">View Bigrams</summary>
+            <pre style="margin-top: 10px; font-size: 0.8rem;">${JSON.stringify(bigrams, null, 2)}</pre>
+          </details>
+          <details style="margin-top: 10px;">
+            <summary style="cursor: pointer; color: var(--accent);">View Trigrams</summary>
+            <pre style="margin-top: 10px; font-size: 0.8rem;">${JSON.stringify(trigrams, null, 2)}</pre>
+          </details>
+        `;
+      } catch (error) {
+        resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    }
+
+    // Config
+    async function setRuntime() {
+      const runtime = document.getElementById('runtime-select').value;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/runtime`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ runtime })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          await updateStatus();
+          alert(`Runtime set to ${runtime.toUpperCase()}`);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+
+    async function loadConfig() {
+      const resultsDiv = document.getElementById('config-results');
+      resultsDiv.style.display = 'block';
+      resultsDiv.innerHTML = '<div class="spinner"></div> Loading...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/config`);
+        const data = await res.json();
+
+        resultsDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+      } catch (error) {
+        resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    }
+
+    async function viewSystemInfo() {
+      const resultsDiv = document.getElementById('config-results');
+      resultsDiv.style.display = 'block';
+      resultsDiv.innerHTML = '<div class="spinner"></div> Loading...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/system`);
+        const data = await res.json();
+
+        resultsDiv.innerHTML = `
+          <h3 style="color: var(--accent)">System Information</h3>
+          <div class="log-entry"><strong>Version:</strong> ${data.version}</div>
+          <div class="log-entry"><strong>Serial:</strong> ${data.serial}</div>
+          <div class="log-entry"><strong>Runtime:</strong> <span class="badge ${data.runtime}">${data.runtime.toUpperCase()}</span></div>
+          <div class="log-entry"><strong>Models:</strong> ${data.models.join(', ') || 'None'}</div>
+          <h3 style="color: var(--accent); margin-top: 15px;">Statistics</h3>
+          <div class="log-entry"><strong>Total Requests:</strong> ${data.stats.requests}</div>
+          <div class="log-entry"><strong>Predictions:</strong> ${data.stats.predictions}</div>
+          <div class="log-entry"><strong>Trainings:</strong> ${data.stats.trainings}</div>
+        `;
+      } catch (error) {
+        resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    }
+
+    // Start app
+    init();
+  </script>
+</body>
+</html>
